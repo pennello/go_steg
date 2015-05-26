@@ -16,7 +16,7 @@ func testDiff(t *testing.T, a chunk, b chunk) {
 		bitsDifferent += int(swar.Ones8(a[i] ^ b[i]))
 	}
 	if bitsDifferent != 1 {
-		t.Errorf("%#v and %#v differ by more than 1 bit", a, b)
+		t.Errorf("%#v and %#v differ by more than 1 bit (by %v)", a, b, bitsDifferent)
 	}
 }
 
