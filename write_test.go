@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	mathrand "math/rand"
 	cryptorand "crypto/rand"
+	mathrand "math/rand"
 
 	"chrispennello.com/go/swar"
 )
@@ -67,7 +67,7 @@ func testWriterHello(t *testing.T) {
 	var err error
 	testBytes := []byte("secret message")
 	dst := new(bytes.Buffer)
-	carrierBytes := []byte(strings.Repeat(string(testHelloChunk()), len(testBytes) + chunkSize/2))
+	carrierBytes := []byte(strings.Repeat(string(testHelloChunk()), len(testBytes)+chunkSize/2))
 	carrier := bytes.NewReader(carrierBytes)
 	w := NewWriter(dst, carrier)
 	n, err = w.Write(testBytes)
@@ -76,8 +76,8 @@ func testWriterHello(t *testing.T) {
 		return
 	}
 	if err != nil {
-			t.Errorf("write error %v", err)
-			return
+		t.Errorf("write error %v", err)
+		return
 	}
 	_, err = w.Copy()
 	if err != nil {
@@ -89,8 +89,8 @@ func testWriterHello(t *testing.T) {
 func testWriterRandom(t *testing.T) {
 	var n int
 	var err error
-	testBytes := make([]byte, mathrand.Intn(10) + 1)
-	testSize := len(testBytes) * (3/2 * chunkSize)
+	testBytes := make([]byte, mathrand.Intn(10)+1)
+	testSize := len(testBytes) * (3 / 2 * chunkSize)
 	dst := new(bytes.Buffer)
 	carrierBytes := make([]byte, testSize)
 	_, err = cryptorand.Read(carrierBytes)
