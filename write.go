@@ -22,21 +22,21 @@ func (c chunk) write(b byte) {
 	// Done!
 }
 
-var ErrShortRead = errors.New("insufficient piggy-back data to write requested data")
+var ErrShortRead = errors.New("insufficient carrier data to write requested data")
 
 type Writer struct {
 	w   io.Writer
-	pig io.Reader
+	carrier io.Reader
 }
 
-func NewWriter(w io.Writer, pig io.Reader) Writer {
-	return Writer{w: w, pig: pig}
+func NewWriter(w io.Writer, carrier io.Reader) Writer {
+	return Writer{w: w, carrier: carrier}
 }
 
 func (w Writer) write(buf []byte, b byte) error {
 	nt := 0
 	for {
-		n, err := w.pig.Read(buf[nt:])
+		n, err := w.carrier.Read(buf[nt:])
 		nt += n
 		if nt == len(buf) {
 			if err != nil && err != io.EOF {
