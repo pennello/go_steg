@@ -33,24 +33,15 @@ func NewWriter(dst io.Writer, carrier io.Reader) Writer {
 	return Writer{dst: dst, carrier: carrier}
 }
 
-// Read a chunk from the carrier.  Potentially error.  If there is an
-// error, even after completing reading the chunk from the carrier, that
+// Read a chunk from the carrier.  If there is an error reading from the
+// carrier, even after completely reading the chunk from the carrier, that
 // error is returned.
 func (w Writer) read(c chunk) error {
 	// We'll use this as a byte slice here internally.
 	p := []byte(c)
-	// The Reader interface definition says that Read can use all of
-	// the buffer passed to it as scratch, even if it reads less
-	// than the length of the buffer, so we make a second, "scratch"
-	// buffer to do each of the iterative reads into, and then
-	// iteratively copy the data we got back successfully into p,
-	// where the caller expects it to be.
-	buf := make([]byte, len(p))
 	t := 0 // Total number of bytes read.
 	for {
-		n, err := w.carrier.Read(buf[t:])
-		// Build up output data in p.
-		copy(p[t:t+n], buf[t:t+n])
+		n, err := w.carrier.Read(p[t:])
 		t += n
 		if t == len(p) {
 			// We're done reading from the carrier.  But do
