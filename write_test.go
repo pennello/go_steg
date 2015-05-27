@@ -3,9 +3,12 @@
 package steg
 
 import (
+	"bytes"
+	"strings"
 	"testing"
 
-	"crypto/rand"
+	mathrand "math/rand"
+	cryptorand "crypto/rand"
 
 	"chrispennello.com/go/swar"
 )
@@ -21,12 +24,12 @@ func testDiff(t *testing.T, a chunk, b chunk) {
 }
 
 func testWrite(t *testing.T, c chunk, b byte) {
-	t.Log("original chunk begin")
+	//t.Log("original chunk begin")
 	testReadByte(t, c)
 	// Make backup.
 	cb := chunk(make([]byte, chunkSize))
 	copy([]byte(cb), []byte(c))
-	t.Logf("writing byte %#v", string(b))
+	//t.Logf("writing byte %#v", string(b))
 	c.write(b)
 	if testReadByte(t, c) != b {
 		t.Errorf("failed to write %#v and read back", b)
@@ -35,13 +38,12 @@ func testWrite(t *testing.T, c chunk, b byte) {
 }
 
 func testWriteHello(t *testing.T, b byte) {
-	c := chunk("hello, there, how are you? fine.")
-	testWrite(t, c, b)
+	testWrite(t, testHelloChunk(), b)
 }
 
 func testWriteRandom(t *testing.T) {
 	buf := make([]byte, chunkSize+1)
-	_, err := rand.Read(buf)
+	_, err := cryptorand.Read(buf)
 	if err != nil {
 		t.Errorf("failed to generate random data for test; %v", err)
 		return
@@ -57,5 +59,67 @@ func TestWrite(t *testing.T) {
 	}
 	for i := 0; i < 1000; i++ {
 		testWriteRandom(t)
+	}
+}
+
+func testWriterHello(t *testing.T) {
+	var n int
+	var err error
+	testBytes := []byte("secret message")
+	dst := new(bytes.Buffer)
+	carrierBytes := []byte(strings.Repeat(string(testHelloChunk()), len(testBytes) + chunkSize/2))
+	carrier := bytes.NewReader(carrierBytes)
+	w := NewWriter(dst, carrier)
+	n, err = w.Write(testBytes)
+	if n != len(testBytes) {
+		t.Errorf("incomplete write; n = %v, err = %v", n, err)
+		return
+	}
+	if err != nil {
+			t.Errorf("write error %v", err)
+			return
+	}
+	_, err = w.Copy()
+	if err != nil {
+		t.Errorf("remaining data copy error %v", err)
+	}
+	//t.Logf("destination buffer: %#v", string(dst.Bytes()))
+}
+
+func testWriterRandom(t *testing.T) {
+	var n int
+	var err error
+	testBytes := make([]byte, mathrand.Intn(10) + 1)
+	testSize := len(testBytes) * (3/2 * chunkSize)
+	dst := new(bytes.Buffer)
+	carrierBytes := make([]byte, testSize)
+	_, err = cryptorand.Read(carrierBytes)
+	if err != nil {
+		t.Errorf("failed to generate random carrier data for test; %v", err)
+		return
+	}
+	carrier := bytes.NewReader(carrierBytes)
+	_, err = cryptorand.Read(testBytes)
+	if err != nil {
+		t.Errorf("failed to generate random test data for test; %v", err)
+		return
+	}
+	w := NewWriter(dst, carrier)
+	n, err = w.Write(testBytes)
+	if n != len(testBytes) {
+		t.Errorf("incomplete write; n = %v, err = %v", n, err)
+		return
+	}
+	if err != nil {
+		t.Errorf("write error %v", err)
+		return
+	}
+	//t.Logf("destination buffer: %#v", string(dst.Bytes()))
+}
+
+func TestWriter(t *testing.T) {
+	testWriterHello(t)
+	for i := 0; i < 1000; i++ {
+		testWriterRandom(t)
 	}
 }

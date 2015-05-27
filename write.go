@@ -25,20 +25,36 @@ func (c chunk) write(b byte) {
 var ErrShortRead = errors.New("insufficient carrier data to write requested data")
 
 type Writer struct {
-	w   io.Writer
+	dst     io.Writer
 	carrier io.Reader
 }
 
-func NewWriter(w io.Writer, carrier io.Reader) Writer {
-	return Writer{w: w, carrier: carrier}
+func NewWriter(dst io.Writer, carrier io.Reader) Writer {
+	return Writer{dst: dst, carrier: carrier}
 }
 
-func (w Writer) write(buf []byte, b byte) error {
-	nt := 0
+// Read a chunk from the carrier.  Potentially error.  If there is an
+// error, even after completing reading the chunk from the carrier, that
+// error is returned.
+func (w Writer) read(c chunk) error {
+	// We'll use this as a byte slice here internally.
+	p := []byte(c)
+	// The Reader interface definition says that Read can use all of
+	// the buffer passed to it as scratch, even if it reads less
+	// than the length of the buffer, so we make a second, "scratch"
+	// buffer to do each of the iterative reads into, and then
+	// iteratively copy the data we got back successfully into p,
+	// where the caller expects it to be.
+	buf := make([]byte, len(p))
+	t := 0 // Total number of bytes read.
 	for {
-		n, err := w.carrier.Read(buf[nt:])
-		nt += n
-		if nt == len(buf) {
+		n, err := w.carrier.Read(buf[t:])
+		// Build up output data in p.
+		copy(p[t:t+n], buf[t:t+n])
+		t += n
+		if t == len(p) {
+			// We're done reading from the carrier.  But do
+			// check for an error...
 			if err != nil && err != io.EOF {
 				return err
 			}
@@ -55,15 +71,35 @@ func (w Writer) write(buf []byte, b byte) error {
 	return nil
 }
 
+// Write chunk into destination io.Reader.
+func (w Writer) write(c chunk) error {
+	_, err := w.dst.Write([]byte(c))
+	return err
+}
+
 func (w Writer) Write(p []byte) (int, error) {
-	buf := make([]byte, chunkSize)
-	n := 0
+	c := chunk(make([]byte, chunkSize))
+	n := 0 // Total bytes written.
 	for _, b := range p {
-		err := w.write(buf, b)
+		var err error
+		err = w.read(c)
 		if err != nil {
+			return n, err
+		}
+		c.write(b)
+		err = w.write(c)
+		if err != nil {
+			// We may have written _some_ of the bytes of c,
+			// but won't have written all of them.  We
+			// consider this to be b _not_ having been
+			// written, so n remains unincremented.
 			return n, err
 		}
 		n++
 	}
 	return n, nil
+}
+
+func (w Writer) Copy() (written int64, err error) {
+	return io.Copy(w.dst, w.carrier)
 }
