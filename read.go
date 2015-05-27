@@ -2,7 +2,11 @@
 
 package steg
 
-import "chrispennello.com/go/swar"
+import (
+	"io"
+
+	"chrispennello.com/go/swar"
+)
 
 func (c chunk) readBit(i bitIndex) byte {
 	// Byte we'll return.  Will have the output bit set at index i.
@@ -33,4 +37,32 @@ func (c chunk) read() byte {
 		ret |= c.readBit(i)
 	}
 	return ret
+}
+
+// Read a chunk from an io.Reader.  If there is an error reading, even
+// after completely reading the chunk, that error is returned.
+func readChunk(c chunk, r io.Reader) error {
+	// We'll use this as a byte slice here internally.
+	p := []byte(c)
+	t := 0 // Total number of bytes read.
+	for {
+		n, err := r.Read(p[t:])
+		t += n
+		if t == len(p) {
+			// We're done reading.  But do check for an
+			// error...
+			if err != nil && err != io.EOF {
+				return err
+			}
+			break
+		}
+		if err != nil {
+			if err == io.EOF {
+				return ErrShortRead
+			} else {
+				return err
+			}
+		}
+	}
+	return nil
 }

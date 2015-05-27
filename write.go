@@ -33,35 +33,6 @@ func NewWriter(dst io.Writer, carrier io.Reader) Writer {
 	return Writer{dst: dst, carrier: carrier}
 }
 
-// Read a chunk from the carrier.  If there is an error reading from the
-// carrier, even after completely reading the chunk from the carrier, that
-// error is returned.
-func (w Writer) read(c chunk) error {
-	// We'll use this as a byte slice here internally.
-	p := []byte(c)
-	t := 0 // Total number of bytes read.
-	for {
-		n, err := w.carrier.Read(p[t:])
-		t += n
-		if t == len(p) {
-			// We're done reading from the carrier.  But do
-			// check for an error...
-			if err != nil && err != io.EOF {
-				return err
-			}
-			break
-		}
-		if err != nil {
-			if err == io.EOF {
-				return ErrShortRead
-			} else {
-				return err
-			}
-		}
-	}
-	return nil
-}
-
 // Write chunk into destination io.Reader.
 func (w Writer) write(c chunk) error {
 	_, err := w.dst.Write([]byte(c))
@@ -73,7 +44,7 @@ func (w Writer) Write(p []byte) (int, error) {
 	n := 0 // Total bytes written.
 	for _, b := range p {
 		var err error
-		err = w.read(c)
+		err = readChunk(c, w.carrier)
 		if err != nil {
 			return n, err
 		}
