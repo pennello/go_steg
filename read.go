@@ -100,9 +100,7 @@ func NewReader(src io.Reader) Reader {
 // can return n = len(p) and err = io.EOF.
 func (r Reader) Read(p []byte) (n int, err error) {
 	c := newChunk()
-	n := 0
 	var complete bool
-	var err error
 	for ; n < len(p); n++ {
 		complete, err = readChunk(c, r.src)
 		if !complete {

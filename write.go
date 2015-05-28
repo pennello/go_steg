@@ -51,12 +51,10 @@ func (w Writer) write(c chunk) error {
 // couldn't read enough data from the carrier to embed some byte, so the
 // carrier data was therefore thrown away before being written to the
 // destination.
-func (w Writer) Write(p []byte) (int, error) {
+func (w Writer) Write(p []byte) (n int, err error) {
 	c := newChunk()
-	n := 0 // Total bytes written.
 	for _, b := range p {
 		var complete bool
-		var err error
 		complete, err = readChunk(c, w.carrier)
 		if !complete {
 			return n, err
