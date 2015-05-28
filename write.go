@@ -45,7 +45,7 @@ func (w Writer) write(c chunk) error {
 // using data from the carrier io.Reader.  Returns the number of bytes
 // written, as well as an error, if one occurred.
 //
-// Can return ErrShortRead if an io.EOF was encountered before being
+// Can return io.ErrUnexpectedEOF if an EOF was encountered before being
 // able to read a sufficient number of bytes from the carrier to embed
 // the requested data.  Note that in this case, you're sort of sunk--we
 // couldn't read enough data from the carrier to embed some byte, so the
@@ -54,9 +54,8 @@ func (w Writer) write(c chunk) error {
 func (w Writer) Write(p []byte) (n int, err error) {
 	c := newChunk()
 	for _, b := range p {
-		var complete bool
-		complete, err = readChunk(c, w.carrier)
-		if !complete {
+		err = readChunk(c, w.carrier)
+		if err != nil {
 			return n, err
 		}
 		c.write(b)

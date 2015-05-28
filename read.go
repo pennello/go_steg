@@ -3,16 +3,10 @@
 package steg
 
 import (
-	"errors"
 	"io"
 
 	"chrispennello.com/go/swar"
 )
-
-// Returned when we get an io.EOF from an io.Reader before we can read
-// sufficient data to extract a requested steganographically-embedded
-// byte.
-var ErrShortRead = errors.New("insufficient data to read chunk")
 
 // Read a single bit with index i from the chunk c.  If you iterate over
 // i from 0 to 7, you'll get the bits you need to reconstruct a whole
@@ -52,30 +46,10 @@ func (c chunk) read() byte {
 // Read a chunk from an io.Reader.  If there is an error reading, even
 // after completely reading the chunk, that error is returned.  Sort of
 // similar to io.Reader.Read, returns a boolean complete--whether we
-// completely read the chunk.
-func readChunk(c chunk, r io.Reader) (complete bool, err error) {
-	// We'll use this as a byte slice here internally.
-	p := []byte(c)
-	t := 0 // Total number of bytes read.
-	for {
-		n, err := r.Read(p[t:])
-		t += n
-		if t == len(p) {
-			// We're done reading.  But do check for an
-			// error...
-			if err != nil {
-				return true, err
-			}
-			break
-		}
-		if err != nil {
-			if err == io.EOF {
-				err = ErrShortRead
-			}
-			return false, err
-		}
-	}
-	return true, nil
+// completely read the chunk.  Returns an error iff no data was read.
+func readChunk(c chunk, r io.Reader) (err error) {
+	_, err = io.ReadFull(r, []byte(c))
+	return err
 }
 
 // A Reader wraps an io.Reader and reads steganographically-embedded
@@ -94,16 +68,14 @@ func NewReader(src io.Reader) Reader {
 // io.Reader.  Returns the number of bytes read as well as an error, if
 // one occurred.
 //
-// Can return ErrShortRead if an io.EOF was encountered before being
+// Can return io.ErrUnexpectedEOF if an EOF was encountered before being
 // able to read a sufficient number of bytes to extract the requested
-// data.  Note that, just like a regular call to io.Reader.Read, this
-// can return n = len(p) and err = io.EOF.
+// data.
 func (r Reader) Read(p []byte) (n int, err error) {
 	c := newChunk()
-	var complete bool
 	for ; n < len(p); n++ {
-		complete, err = readChunk(c, r.src)
-		if !complete {
+		err = readChunk(c, r.src)
+		if err != nil {
 			return n, err
 		}
 		p[n] = c.read()

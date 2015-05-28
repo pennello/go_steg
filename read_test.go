@@ -34,11 +34,7 @@ func testReadChunkHello(t *testing.T) {
 	const repeat = 3
 	r := bytes.NewReader([]byte(strings.Repeat(string(testHelloChunk()), repeat)))
 	c := newChunk()
-	complete, err := readChunk(c, r)
-	if !complete {
-		t.Errorf("incomplete read, err = %v", err)
-		return
-	}
+	err := readChunk(c, r)
 	if err != nil {
 		t.Errorf("read error %v", err)
 		return
@@ -51,11 +47,7 @@ func testReadChunkHello(t *testing.T) {
 func testReadChunkShortRead(t *testing.T) {
 	r := bytes.NewReader([]byte(testHelloChunk())[:30])
 	c := newChunk()
-	complete, err := readChunk(c, r)
-	if complete {
-		t.Errorf("complete read, c = %#v", string(c))
-		return
-	}
+	err := readChunk(c, r)
 	if err == nil {
 		t.Errorf("no error, c = %#v", string(c))
 	}
