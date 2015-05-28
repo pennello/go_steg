@@ -5,4 +5,4 @@ TODO
 - []byte Reader channel?  use "epoll/kqueue" in Mux? maybe for loop is
   ok?
 - maybe generate masks.go from something easier to read?
-- write godoc documentation
+- write package godoc documentation

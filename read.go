@@ -9,8 +9,13 @@ import (
 	"chrispennello.com/go/swar"
 )
 
-var ErrShortRead = errors.New("insufficient carrier data to write requested data")
+// Returned when trying to read a chunk from a reader, but we get an
+// io.EOF.
+var ErrShortRead = errors.New("insufficient data to read chunk")
 
+// Read a single bit with index i from the chunk c.  If you iterate over
+// i from 0 to 7, you'll get the bits you need to reconstruct a whole
+// byte from a chunk.
 func (c chunk) readBit(i bitIndex) byte {
 	// Byte we'll return.  Will have the output bit set at index i.
 	ret := byte(0)
@@ -34,6 +39,7 @@ func (c chunk) readBit(i bitIndex) byte {
 	return ret
 }
 
+// Read a byte from a chunk c.
 func (c chunk) read() byte {
 	ret := byte(0)
 	for i := bitIndex(0); i < 8; i++ {
@@ -43,7 +49,9 @@ func (c chunk) read() byte {
 }
 
 // Read a chunk from an io.Reader.  If there is an error reading, even
-// after completely reading the chunk, that error is returned.
+// after completely reading the chunk, that error is returned.  Sort of
+// similar to io.Reader.Read, returns boolean complete--whether the
+// chunk read was complete or not.
 func readChunk(c chunk, r io.Reader) (complete bool, err error) {
 	// We'll use this as a byte slice here internally.
 	p := []byte(c)
@@ -69,15 +77,27 @@ func readChunk(c chunk, r io.Reader) (complete bool, err error) {
 	return true, nil
 }
 
+// A Reader wraps an io.Reader and reads steganographically-embedded
+// bytes from it.  Implements io.Reader.
 type Reader struct {
 	src io.Reader
 }
 
+// NewReader returns a fresh Reader, ready to read
+// steganographically-embedded bytes from the source io.Reader.
 func NewReader(src io.Reader) Reader {
 	return Reader{src: src}
 }
 
-func (r Reader) Read(p []byte) (int, error) {
+// Read steganographically-embedded bytes from the underlying source
+// io.Reader.  Returns the number of bytes read as well as an error, if
+// one occurred.
+//
+// Can return ErrShortRead if an io.EOF was encountered before being
+// able to read a sufficient number of bytes to extract the requested
+// data.  Note that, just like a regular call to io.Reader.Read, this
+// can return n = len(p) and err = io.EOF.
+func (r Reader) Read(p []byte) (n int, err error) {
 	c := newChunk()
 	n := 0
 	var complete bool
