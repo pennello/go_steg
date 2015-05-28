@@ -3,10 +3,13 @@
 package steg
 
 import (
+	"errors"
 	"io"
 
 	"chrispennello.com/go/swar"
 )
+
+var ErrShortRead = errors.New("insufficient carrier data to write requested data")
 
 func (c chunk) readBit(i bitIndex) byte {
 	// Byte we'll return.  Will have the output bit set at index i.

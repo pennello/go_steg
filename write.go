@@ -2,10 +2,7 @@
 
 package steg
 
-import (
-	"errors"
-	"io"
-)
+import "io"
 
 func (c chunk) write(b byte) {
 	cur := c.read()
@@ -21,8 +18,6 @@ func (c chunk) write(b byte) {
 	c[byteIndex] ^= mask
 	// Done!
 }
-
-var ErrShortRead = errors.New("insufficient carrier data to write requested data")
 
 type Writer struct {
 	dst     io.Writer
