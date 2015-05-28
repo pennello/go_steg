@@ -1,6 +1,6 @@
 TODO
 ----
-- tests for reader & writer together, improve write, read tests?
+- test error conditions
 - Mux (takes two readers and a writer)
 - []byte Reader channel?  use "epoll/kqueue" in Mux? maybe for loop is
   ok?
