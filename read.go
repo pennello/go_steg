@@ -61,10 +61,9 @@ func readChunk(c chunk, r io.Reader) (complete bool, err error) {
 		}
 		if err != nil {
 			if err == io.EOF {
-				return false, ErrShortRead
-			} else {
-				return false, err
+				err = ErrShortRead
 			}
+			return false, err
 		}
 	}
 	return true, nil

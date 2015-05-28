@@ -2,7 +2,7 @@
 
 package steg
 
-var masksByIndex map[bitIndex]byteMasks = map[bitIndex]byteMasks{
+var masksByIndex = map[bitIndex]byteMasks{
 	0: {
 		0xaa,
 		0xaa,
