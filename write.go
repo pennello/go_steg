@@ -35,12 +35,13 @@ func (w Writer) write(c chunk) error {
 }
 
 func (w Writer) Write(p []byte) (int, error) {
-	c := chunk(make([]byte, chunkSize))
+	c := newChunk()
 	n := 0 // Total bytes written.
 	for _, b := range p {
+		var complete bool
 		var err error
-		err = readChunk(c, w.carrier)
-		if err != nil {
+		complete, err = readChunk(c, w.carrier)
+		if !complete {
 			return n, err
 		}
 		c.write(b)

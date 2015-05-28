@@ -24,15 +24,14 @@ func testDiff(t *testing.T, a chunk, b chunk) {
 }
 
 func testWrite(t *testing.T, c chunk, b byte) {
-	//t.Log("original chunk begin")
 	testReadByte(t, c)
 	// Make backup.
-	cb := chunk(make([]byte, chunkSize))
+	cb := newChunk()
 	copy([]byte(cb), []byte(c))
-	//t.Logf("writing byte %#v", string(b))
 	c.write(b)
-	if testReadByte(t, c) != b {
-		t.Errorf("failed to write %#v and read back", b)
+	r := testReadByte(t, c)
+	if r != b {
+		t.Errorf("failed to write %#v and read back (got %#v); original was %#v, after writing: %#v", b, r, cb, c)
 	}
 	testDiff(t, cb, c)
 }
@@ -83,7 +82,6 @@ func testWriterHello(t *testing.T) {
 	if err != nil {
 		t.Errorf("remaining data copy error %v", err)
 	}
-	//t.Logf("destination buffer: %#v", string(dst.Bytes()))
 }
 
 func testWriterRandom(t *testing.T) {
@@ -114,7 +112,6 @@ func testWriterRandom(t *testing.T) {
 		t.Errorf("write error %v", err)
 		return
 	}
-	//t.Logf("destination buffer: %#v", string(dst.Bytes()))
 }
 
 func TestWriter(t *testing.T) {

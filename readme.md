@@ -1,6 +1,5 @@
 TODO
 ----
-- Reader
 - implement Writer with Reader wrapper?
 - tests for reader & writer together, improve write, read tests?
 - Mux (takes two readers and a writer)

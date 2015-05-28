@@ -44,7 +44,7 @@ func (c chunk) read() byte {
 
 // Read a chunk from an io.Reader.  If there is an error reading, even
 // after completely reading the chunk, that error is returned.
-func readChunk(c chunk, r io.Reader) error {
+func readChunk(c chunk, r io.Reader) (complete bool, err error) {
 	// We'll use this as a byte slice here internally.
 	p := []byte(c)
 	t := 0 // Total number of bytes read.
@@ -54,18 +54,41 @@ func readChunk(c chunk, r io.Reader) error {
 		if t == len(p) {
 			// We're done reading.  But do check for an
 			// error...
-			if err != nil && err != io.EOF {
-				return err
+			if err != nil {
+				return true, err
 			}
 			break
 		}
 		if err != nil {
 			if err == io.EOF {
-				return ErrShortRead
+				return false, ErrShortRead
 			} else {
-				return err
+				return false, err
 			}
 		}
 	}
-	return nil
+	return true, nil
+}
+
+type Reader struct {
+	src io.Reader
+}
+
+func NewReader(src io.Reader) Reader {
+	return Reader{src: src}
+}
+
+func (r Reader) Read(p []byte) (int, error) {
+	c := newChunk()
+	n := 0
+	var complete bool
+	var err error
+	for ; n < len(p); n++ {
+		complete, err = readChunk(c, r.src)
+		if !complete {
+			return n, err
+		}
+		p[n] = c.read()
+	}
+	return n, err
 }

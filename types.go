@@ -7,3 +7,7 @@ const chunkSize = 32
 type bitIndex uint
 type chunk []byte
 type byteMasks chunk
+
+func newChunk() chunk {
+	return chunk(make([]byte, chunkSize))
+}
