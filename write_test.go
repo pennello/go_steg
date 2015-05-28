@@ -81,12 +81,12 @@ func testBytesDiff(t *testing.T, a, b []byte, expectBitsDifferent int) {
 	}
 }
 
-func testWriterHello(t *testing.T) {
+func testWriterHelloExtra(t *testing.T, extra int) {
 	var n int
 	var err error
 	testBytes := []byte("secret message")
 	dst := new(bytes.Buffer)
-	carrierBytes := []byte(strings.Repeat(string(testHelloChunk()), len(testBytes)+17))
+	carrierBytes := []byte(strings.Repeat(string(testHelloChunk()), len(testBytes)+extra))
 	carrier := bytes.NewReader(carrierBytes)
 	w := NewWriter(dst, carrier)
 	n, err = w.Write(testBytes)
@@ -167,7 +167,8 @@ func testWriterShortReadRandom(t *testing.T) {
 }
 
 func TestWriter(t *testing.T) {
-	testWriterHello(t)
+	testWriterHelloExtra(t, 0)
+	testWriterHelloExtra(t, 17)
 	for i := 0; i < 1000; i++ {
 		testWriterRandom(t)
 		testWriterShortReadRandom(t)
