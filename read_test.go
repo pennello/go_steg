@@ -30,8 +30,8 @@ func TestReadByte(t *testing.T) {
 	}
 }
 
-func TestReader(t *testing.T) {
-	const repeat = 1
+func testReaderHello(t *testing.T) {
+	const repeat = 3
 	b := bytes.NewBuffer([]byte(strings.Repeat(string(testHelloChunk()), repeat)))
 	r := NewReader(b)
 	out := make([]byte, repeat)
@@ -48,4 +48,8 @@ func TestReader(t *testing.T) {
 	if !bytes.Equal(out, expect) {
 		t.Errorf("unexpected string read %#v (expected %#v)", out, expect)
 	}
+}
+
+func TestReader(t *testing.T) {
+	testReaderHello(t)
 }
