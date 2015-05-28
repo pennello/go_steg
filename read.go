@@ -10,7 +10,8 @@ import (
 )
 
 // Returned when we get an io.EOF from an io.Reader before we can read
-// sufficient data to extract a requested steganographically-embedded byte.
+// sufficient data to extract a requested steganographically-embedded
+// byte.
 var ErrShortRead = errors.New("insufficient data to read chunk")
 
 // Read a single bit with index i from the chunk c.  If you iterate over

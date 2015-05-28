@@ -20,16 +20,17 @@ func (c chunk) write(b byte) {
 	// Done!
 }
 
-// A Writer enables you to write steganographically-embedded bytes into a
-// destination io.Writer by using the data read from a carrier io.Reader.
+// A Writer enables you to write steganographically-embedded bytes into
+// a destination io.Writer by using the data read from a carrier
+// io.Reader.  Implements io.Writer.
 type Writer struct {
 	dst     io.Writer
 	carrier io.Reader
 }
 
-// NewWriter returns a fresh Writer, ready to write steganographically-embedded
-// bytes to the destination io.Writer using the data from the carrier
-// io.Reader.
+// NewWriter returns a fresh Writer, ready to write
+// steganographically-embedded bytes to the destination io.Writer using
+// the data from the carrier io.Reader.
 func NewWriter(dst io.Writer, carrier io.Reader) Writer {
 	return Writer{dst: dst, carrier: carrier}
 }
@@ -40,15 +41,16 @@ func (w Writer) write(c chunk) error {
 	return err
 }
 
-// Write steganographically-embedded bytes to the destination io.Writer using
-// data from the carrier io.Reader.  Returns the number of bytes written, as
-// well as an error, if one occurred.
+// Write steganographically-embedded bytes to the destination io.Writer
+// using data from the carrier io.Reader.  Returns the number of bytes
+// written, as well as an error, if one occurred.
 //
-// Can return ErrShortRead if an io.EOF was encountered before being able to
-// read a sufficient number of bytes from the carrier to embed the requested
-// data.  Note that in this case, you're sort of sunk--we couldn't read
-// enough data from the carrier to embed some byte, so the carrier data
-// was therefore thrown away before being written to the destination.
+// Can return ErrShortRead if an io.EOF was encountered before being
+// able to read a sufficient number of bytes from the carrier to embed
+// the requested data.  Note that in this case, you're sort of sunk--we
+// couldn't read enough data from the carrier to embed some byte, so the
+// carrier data was therefore thrown away before being written to the
+// destination.
 func (w Writer) Write(p []byte) (int, error) {
 	c := newChunk()
 	n := 0 // Total bytes written.
@@ -74,7 +76,8 @@ func (w Writer) Write(p []byte) (int, error) {
 }
 
 // Copy copies from the carrier to the destination without doing any
-// steganographic embedding.  It's implemented by a simple call to io.Copy.
+// steganographic embedding.  It's implemented by a simple call to
+// io.Copy.
 //
 // The idea is that you'd call this to send through the rest of your
 // carrier data after you've finished successfully with your Write.
