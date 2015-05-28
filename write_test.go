@@ -23,7 +23,7 @@ func testChunkDiff(t *testing.T, a, b chunk) {
 	}
 }
 
-func testWrite(t *testing.T, c chunk, b byte) {
+func testWriteByte(t *testing.T, c chunk, b byte) {
 	testReadByte(t, c)
 	// Make backup.
 	cb := newChunk()
@@ -36,11 +36,11 @@ func testWrite(t *testing.T, c chunk, b byte) {
 	testChunkDiff(t, cb, c)
 }
 
-func testWriteHello(t *testing.T, b byte) {
-	testWrite(t, testHelloChunk(), b)
+func testWriteByteHello(t *testing.T, b byte) {
+	testWriteByte(t, testHelloChunk(), b)
 }
 
-func testWriteRandom(t *testing.T) {
+func testWriteByteRandom(t *testing.T) {
 	buf := make([]byte, chunkSize+1)
 	_, err := cryptorand.Read(buf)
 	if err != nil {
@@ -49,15 +49,15 @@ func testWriteRandom(t *testing.T) {
 	}
 	c := chunk(buf[1:])
 	b := byte(buf[0])
-	testWrite(t, c, b)
+	testWriteByte(t, c, b)
 }
 
-func TestWrite(t *testing.T) {
+func TestWriteByte(t *testing.T) {
 	for b := byte(0x20); b < 0x80; b++ {
-		testWriteHello(t, b)
+		testWriteByteHello(t, b)
 	}
 	for i := 0; i < 1000; i++ {
-		testWriteRandom(t)
+		testWriteByteRandom(t)
 	}
 }
 
