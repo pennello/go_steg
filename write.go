@@ -78,7 +78,7 @@ func (w Writer) Write(p []byte) (n int, err error) {
 // io.Copy.
 //
 // The idea is that you'd call this to send through the rest of your
-// carrier data after you've finished successfully with your Write.
+// carrier data after you've finished successfully with any Writes.
 func (w Writer) Copy() (written int64, err error) {
 	return io.Copy(w.dst, w.carrier)
 }
