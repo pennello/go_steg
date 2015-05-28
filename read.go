@@ -51,8 +51,8 @@ func (c chunk) read() byte {
 
 // Read a chunk from an io.Reader.  If there is an error reading, even
 // after completely reading the chunk, that error is returned.  Sort of
-// similar to io.Reader.Read, returns boolean complete--whether the
-// chunk read was complete or not.
+// similar to io.Reader.Read, returns a boolean complete--whether we
+// completely read the chunk.
 func readChunk(c chunk, r io.Reader) (complete bool, err error) {
 	// We'll use this as a byte slice here internally.
 	p := []byte(c)
