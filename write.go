@@ -37,6 +37,7 @@ func NewWriter(dst io.Writer, carrier io.Reader) Writer {
 
 // Write chunk into destination io.Reader.
 func (w Writer) write(c chunk) error {
+	// XXX Can io.Writer.Write return an error even if n = len(p)?
 	_, err := w.dst.Write([]byte(c))
 	return err
 }
