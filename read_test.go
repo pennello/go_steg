@@ -14,11 +14,15 @@ func testReadByte(t *testing.T, c chunk) byte {
 	return r
 }
 
-func TestReadByte(t *testing.T) {
+func testReadByteHello(t *testing.T) {
 	out := testReadByte(t, testHelloChunk())
 	if out != helloByte {
 		t.Errorf("didn't get back u with hat (got %#v)", out)
 	}
+}
+
+func TestReadByte(t *testing.T) {
+	testReadByteHello(t)
 	for i := bitIndex(0); i < 8; i++ {
 		if testReadByte(t, chunk(masksByIndex[i])) != 0 {
 			t.Errorf("mask at index %v didn't yield 0", i)
