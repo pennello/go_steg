@@ -13,7 +13,7 @@ import (
 	"chrispennello.com/go/swar"
 )
 
-func testDiff(t *testing.T, a chunk, b chunk) {
+func testChunkDiff(t *testing.T, a, b chunk) {
 	bitsDifferent := 0
 	for i := 0; i < chunkSize; i++ {
 		bitsDifferent += int(swar.Ones8(a[i] ^ b[i]))
@@ -33,7 +33,7 @@ func testWrite(t *testing.T, c chunk, b byte) {
 	if r != b {
 		t.Errorf("failed to write %#v and read back (got %#v); original was %#v, after writing: %#v", b, r, cb, c)
 	}
-	testDiff(t, cb, c)
+	testChunkDiff(t, cb, c)
 }
 
 func testWriteHello(t *testing.T, b byte) {
@@ -61,12 +61,32 @@ func TestWrite(t *testing.T) {
 	}
 }
 
+func testBytesDiff(t *testing.T, a, b []byte, expectBitsDifferent int) {
+	var m int
+	if len(a) < len(b) {
+		m = len(a)
+	} else {
+		m = len(b)
+	}
+	bitsDifferent := 0
+	for i := 0; i < m; i++ {
+		bitsDifferent += int(swar.Ones8(a[i] ^ b[i]))
+	}
+	if bitsDifferent != expectBitsDifferent {
+		t.Errorf("more than %v bit difference (is %v); %#v %#v",
+			expectBitsDifferent,
+			bitsDifferent,
+			string(a),
+			string(b))
+	}
+}
+
 func testWriterHello(t *testing.T) {
 	var n int
 	var err error
 	testBytes := []byte("secret message")
 	dst := new(bytes.Buffer)
-	carrierBytes := []byte(strings.Repeat(string(testHelloChunk()), len(testBytes)+chunkSize/2))
+	carrierBytes := []byte(strings.Repeat(string(testHelloChunk()), len(testBytes)+17))
 	carrier := bytes.NewReader(carrierBytes)
 	w := NewWriter(dst, carrier)
 	n, err = w.Write(testBytes)
@@ -82,6 +102,7 @@ func testWriterHello(t *testing.T) {
 	if err != nil {
 		t.Errorf("remaining data copy error %v", err)
 	}
+	testBytesDiff(t, carrierBytes, dst.Bytes(), len(testBytes))
 }
 
 func testWriterRandom(t *testing.T) {
@@ -112,6 +133,7 @@ func testWriterRandom(t *testing.T) {
 		t.Errorf("write error %v", err)
 		return
 	}
+	testBytesDiff(t, carrierBytes, dst.Bytes(), len(testBytes))
 }
 
 func TestWriter(t *testing.T) {
