@@ -136,9 +136,40 @@ func testWriterRandom(t *testing.T) {
 	testBytesDiff(t, carrierBytes, dst.Bytes(), len(testBytes))
 }
 
+func testWriterShortReadRandom(t *testing.T) {
+	var n int
+	var err error
+	testBytes := make([]byte, mathrand.Intn(10)+1)
+	testSize := len(testBytes) * (2 / 3 * chunkSize)
+	dst := new(bytes.Buffer)
+	carrierBytes := make([]byte, testSize)
+	_, err = cryptorand.Read(carrierBytes)
+	if err != nil {
+		t.Errorf("failed to generate random carrier data for test; %v", err)
+		return
+	}
+	carrier := bytes.NewReader(carrierBytes)
+	_, err = cryptorand.Read(testBytes)
+	if err != nil {
+		t.Errorf("failed to generate random test data for test; %v", err)
+		return
+	}
+	w := NewWriter(dst, carrier)
+	n, err = w.Write(testBytes)
+	if n == len(testBytes) {
+		t.Errorf("wrote too much; n = %v", n)
+		return
+	}
+	if err == nil {
+		t.Errorf("no error; n =  %v", n)
+		return
+	}
+}
+
 func TestWriter(t *testing.T) {
 	testWriterHello(t)
 	for i := 0; i < 1000; i++ {
 		testWriterRandom(t)
+		testWriterShortReadRandom(t)
 	}
 }
