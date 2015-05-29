@@ -22,43 +22,61 @@ import (
 	"../../../steg"
 )
 
-func mux(carrier io.Reader) error {
-	return steg.Mux(os.Stdout, carrier, os.Stdin)
+func mux(carrier io.Reader, offset int64) (err error) {
+	m := steg.NewMux(os.Stdout, carrier, os.Stdin)
+	if offset != 0 {
+		_, err = m.CopyN(offset)
+		if err != nil {
+			return err
+		}
+	}
+	return m.Mux()
 }
 
-func read() error {
-	_, err := io.Copy(os.Stdout, steg.NewReader(os.Stdin))
+func extract(offset int64) (err error) {
+	r := steg.NewReader(os.Stdin)
+	if offset != 0 {
+		err = r.Discard(offset)
+		if err != nil {
+			return err
+		}
+	}
+	_, err = io.Copy(os.Stdout, r)
 	return err
 }
 
 func main() {
 	log.SetFlags(0)
 	log.SetPrefix(fmt.Sprintf("%s: ", os.Args[0]))
+	offset := flag.Int64("offset", 0, "when writing, carrier data "+
+		"offset after which to embed message data;\n"+
+		"             when reading, offset after which to start "+
+		"reading")
 	flag.Parse()
 	a := flag.Args()
 
 	var carrier io.Reader
 	var err error
-	if len(a) == 1 {
+	if len(a) != 1 {
+		carrier = nil
+	} else {
 		carrier, err = os.Open(a[0])
 		if err != nil {
 			log.Fatalf("failed to open carrier %v", err)
 		}
-	} else {
-		carrier = nil
 	}
 
 	var errlabel string
 	if carrier == nil {
-		err = read()
+		err = extract(*offset)
 		if err == steg.ErrShortRead {
 			// Short reads are ok.  We just got the end of
 			// the file!
 			err = nil
 		}
-		errlabel = "read"
+		errlabel = "extract"
 	} else {
-		err = mux(carrier)
+		err = mux(carrier, *offset)
 		errlabel = "mux"
 	}
 

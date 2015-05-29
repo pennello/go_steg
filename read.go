@@ -5,6 +5,7 @@ package steg
 import (
 	"errors"
 	"io"
+	"io/ioutil"
 
 	"chrispennello.com/go/swar"
 )
@@ -91,4 +92,16 @@ func (r Reader) Read(p []byte) (n int, err error) {
 		p[n] = c.read()
 	}
 	return n, err
+}
+
+// Discard reads n bytes into ioutil.Discard, throwing them away.
+//
+// The idea is that you'd call this to jump ahead by some offset in the
+// carrier data before you start reading your
+// steganographically-embedded data.
+//
+// Counterpart to Writer.CopyN.
+func (r Reader) Discard(n int64) (err error) {
+	_, err = io.CopyN(ioutil.Discard, r.src, n)
+	return err
 }

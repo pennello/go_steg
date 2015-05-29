@@ -94,3 +94,16 @@ func (w Writer) Write(p []byte) (n int, err error) {
 func (w Writer) Copy() (written int64, err error) {
 	return io.Copy(w.dst, w.carrier)
 }
+
+// CopyN copies n bytes from the carrier to the destination without
+// doing any steganographic embedding.  It's implemented by a simple
+// call to io.CopyN.
+//
+// The idea is that you'd call this before sending through any of your
+// message data to get past critical headers in your carrier before
+// embedding your data.
+//
+// Counterpart to Reader.Discard.
+func (w Writer) CopyN(n int64) (written int64, err error) {
+	return io.CopyN(w.dst, w.carrier, n)
+}
