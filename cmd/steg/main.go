@@ -51,6 +51,11 @@ func main() {
 	var errlabel string
 	if carrier == nil {
 		err = read()
+		if err == steg.ErrShortRead {
+			// Short reads are ok.  We just got the end of
+			// the file!
+			err = nil
+		}
 		errlabel = "read"
 	} else {
 		err = mux(carrier)
