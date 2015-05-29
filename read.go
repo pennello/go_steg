@@ -3,10 +3,15 @@
 package steg
 
 import (
+	"errors"
 	"io"
 
 	"chrispennello.com/go/swar"
 )
+
+// ErrShortRead will be returned from Read and Reader.Read when an EOF
+// is encountered before being able to read sufficient data.
+var ErrShortRead = errors.New("short read")
 
 // Read a single bit with index i from the chunk c.  If you iterate over
 // i from 0 to 7, you'll get the bits you need to reconstruct a whole
@@ -49,6 +54,9 @@ func (c chunk) read() byte {
 // completely read the chunk.  Returns an error iff no data was read.
 func readChunk(c chunk, r io.Reader) (err error) {
 	_, err = io.ReadFull(r, []byte(c))
+	if err == io.EOF || err == io.ErrUnexpectedEOF {
+		err = ErrShortRead
+	}
 	return err
 }
 
@@ -68,9 +76,11 @@ func NewReader(src io.Reader) Reader {
 // io.Reader.  Returns the number of bytes read as well as an error, if
 // one occurred.
 //
-// Can return io.ErrUnexpectedEOF if an EOF was encountered before being
-// able to read a sufficient number of bytes to extract the requested
-// data.
+// Can return io.EOF or io.ErrUnexpectedEOF if an EOF was encountered
+// before being able to read a sufficient number of bytes to extract the
+// requested data.
+//
+// n == len(p) iff err != nil
 func (r Reader) Read(p []byte) (n int, err error) {
 	c := newChunk()
 	for ; n < len(p); n++ {

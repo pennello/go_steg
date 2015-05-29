@@ -2,7 +2,14 @@
 
 package steg
 
-import "io"
+import (
+	"errors"
+	"io"
+)
+
+// ErrShortCarrier is similar to ErrShortRead, but is specialized for
+// errors reading from the carrier io.Reader in Writer.Write.
+var ErrShortCarrier = errors.New("not enough carrier data")
 
 // Write a single byte into a chunk.
 func (c chunk) write(b byte) {
@@ -46,17 +53,22 @@ func (w Writer) write(c chunk) error {
 // using data from the carrier io.Reader.  Returns the number of bytes
 // written, as well as an error, if one occurred.
 //
-// Can return io.ErrUnexpectedEOF if an EOF was encountered before being
+// Can return ErrShortCarrier if an EOF was encountered before being
 // able to read a sufficient number of bytes from the carrier to embed
 // the requested data.  Note that in this case, you're sort of sunk--we
 // couldn't read enough data from the carrier to embed some byte, so the
 // carrier data was therefore thrown away before being written to the
 // destination.
+//
+// n == len(p) iff err != nil
 func (w Writer) Write(p []byte) (n int, err error) {
 	c := newChunk()
 	for _, b := range p {
 		err = readChunk(c, w.carrier)
 		if err != nil {
+			if err == ErrShortRead {
+				err = ErrShortCarrier
+			}
 			return n, err
 		}
 		c.write(b)

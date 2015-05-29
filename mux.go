@@ -10,10 +10,10 @@ import "io"
 // writer.  If the carrier has more than enough data for the message,
 // the rest of the carrier data is simply copied to the writer.
 //
-// Can return io.ErrUnexpectedEOF if an EOF was encountered before being
+// Can return ErrShortCarrier if an EOF was encountered before being
 // able to read a sufficient number amount of data from the carrier for
-// the message.  Can also return other errors as well encountered during
-// the writes.  Successful iff err != nil.
+// the message.  Can return other errors as well encountered during the
+// writes.  Successful iff err != nil.
 func Mux(dst io.Writer, carrier io.Reader, msg io.Reader) (err error) {
 	w := NewWriter(dst, carrier)
 	// XXX Just reading one byte at a time for simplicity.  The
