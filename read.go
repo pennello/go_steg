@@ -78,7 +78,7 @@ func NewReader(src io.Reader) Reader {
 //
 // Can return io.EOF or io.ErrUnexpectedEOF if an EOF was encountered
 // before being able to read a sufficient number of bytes to extract the
-// requested data.
+// requested amount of data.
 //
 // n == len(p) iff err != nil
 func (r Reader) Read(p []byte) (n int, err error) {
