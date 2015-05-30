@@ -1,7 +1,6 @@
 TODO
 ----
-- box container for messages
-- usage message for cmd
+- usage message / better godoc for command
 - user-determined, variable chunk size
 - []byte Reader channel?  use "epoll/kqueue" in Mux? maybe for loop is
   ok?

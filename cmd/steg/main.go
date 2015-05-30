@@ -2,14 +2,6 @@
 
 // Steg is a command-line interface to the steganographic embedding
 // package steg of which it is a part.
-//
-// With no arguments, steg reads from standard in, extracts
-// steganographically-embedded data, and writes it to standard out.
-//
-// If a path to carrier data is provided as the only positional
-// command-line argument, then steg will read a message from standard
-// in, embed it in the carrier data, and write the modified data to
-// standard out.
 package main
 
 import (
@@ -19,68 +11,120 @@ import (
 	"log"
 	"os"
 
+	"chrispennello.com/go/util/databox"
+
 	"../../../steg"
 )
 
-func mux(carrier io.Reader, offset int64) (err error) {
-	m := steg.NewMux(os.Stdout, carrier, os.Stdin)
-	if offset != 0 {
-		_, err = m.CopyN(offset)
-		if err != nil {
-			return err
-		}
-	}
-	return m.Mux()
+type argSpec struct {
+	carrier   io.Reader
+	input     io.Reader
+	inputSize int64
+	box       bool
+	offset    int64
 }
 
-func extract(offset int64) (err error) {
-	r := steg.NewReader(os.Stdin)
-	if offset != 0 {
-		err = r.Discard(offset)
+func getCarrier(path string) io.Reader {
+	if path == "" {
+		return nil
+	}
+	carrier, err := os.Open(path)
+	if err != nil {
+		log.Fatalf("failed to open carrier %v", err)
+	}
+	return carrier
+}
+
+func getInput(path string) (input io.Reader, inputSize int64) {
+	if path == "-" {
+		return os.Stdin, -1
+	}
+	inputFile, err := os.Open(path)
+	if err != nil {
+		log.Fatalf("failed to open input %v", err)
+	}
+	fi, err := inputFile.Stat()
+	if err != nil {
+		log.Fatalf("failed to stat input %v", err)
+	}
+	return inputFile, fi.Size()
+}
+
+func getArgs() argSpec {
+	var args argSpec
+
+	carrierUsage := "path to message carrier"
+	carrier := flag.String("carrier", "", carrierUsage)
+
+	inputUsage := "path to input; can be - for standard in"
+	input := flag.String("input", "-", inputUsage)
+
+	boxUsage := "use length-checking encapsulation format"
+	box := flag.Bool("box", false, boxUsage)
+
+	offsetUsage := "read/write offset"
+	offset := flag.Int64("offset", 0, offsetUsage)
+
+	flag.Parse()
+
+	args.carrier = getCarrier(*carrier)
+	args.input, args.inputSize = getInput(*input)
+	args.box = *box
+	args.offset = *offset
+
+	return args
+}
+
+func extract(args argSpec) {
+	var err error
+	sr := steg.NewReader(args.input)
+	if args.offset != 0 {
+		err = sr.Discard(args.offset)
 		if err != nil {
-			return err
+			log.Fatalf("extract error: %v", err)
 		}
 	}
+	r := io.Reader(sr)
+	if args.box {
+		r = databox.NewUnmarshaller(r)
+	}
 	_, err = io.Copy(os.Stdout, r)
-	return err
+	if err == steg.ErrShortRead {
+		// Short reads are ok on extract.  We just got the end
+		// of the file!
+		err = nil
+	}
+	if err != nil {
+		log.Fatalf("extract error: %v", err)
+	}
+}
+
+func mux(args argSpec) {
+	var err error
+	message := args.input
+	if args.box {
+		message = databox.NewMarshaller(args.input, args.inputSize)
+	}
+	m := steg.NewMux(os.Stdout, args.carrier, message)
+	if args.offset != 0 {
+		_, err = m.CopyN(args.offset)
+		if err != nil {
+			log.Fatalf("mux error: %v", err)
+		}
+	}
+	err = m.Mux()
+	if err != nil {
+		log.Fatalf("mux error: %v", err)
+	}
 }
 
 func main() {
 	log.SetFlags(0)
 	log.SetPrefix(fmt.Sprintf("%s: ", os.Args[0]))
-	offset := flag.Int64("offset", 0, "when writing, carrier data "+
-		"offset after which to embed message data;\n"+
-		"             when reading, offset after which to start "+
-		"reading")
-	flag.Parse()
-	a := flag.Args()
-
-	var carrier io.Reader
-	var err error
-	if len(a) != 1 {
-		carrier = nil
+	args := getArgs()
+	if args.carrier == nil {
+		extract(args)
 	} else {
-		carrier, err = os.Open(a[0])
-		if err != nil {
-			log.Fatalf("failed to open carrier %v", err)
-		}
-	}
-
-	var errlabel string
-	if carrier == nil {
-		err = extract(*offset)
-		if err == steg.ErrShortRead {
-			// Short reads are ok.  We just got the end of
-			// the file!
-			err = nil
-		}
-		errlabel = "extract"
-	} else {
-		err = mux(carrier, *offset)
-		errlabel = "mux"
-	}
-
-	if err != nil {
-		log.Fatalf("%s error: %v", errlabel, err)
+		mux(args)
 	}
 }
