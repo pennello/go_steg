@@ -109,6 +109,10 @@ func getArgs() argSpec {
 	args.box = *box
 	args.offset = *offset
 
+	if args.offset < 0 {
+		log.Fatalf("offset must be positive")
+	}
+
 	return args
 }
 
