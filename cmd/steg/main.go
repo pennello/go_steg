@@ -53,37 +53,38 @@ import (
 )
 
 type argSpec struct {
-	carrier   io.Reader
-	input     io.Reader
-	inputSize int64
-	box       bool
-	offset    int64
+	carrier     io.Reader
+	carrierSize int64
+	input       io.Reader
+	inputSize   int64
+	box         bool
+	offset      int64
 }
 
-func getCarrier(path string) io.Reader {
-	if path == "" {
-		return nil
-	}
-	carrier, err := os.Open(path)
+func getFile(path string) (f *os.File, size int64) {
+	f, err := os.Open(path)
 	if err != nil {
-		log.Fatalf("failed to open carrier %v", err)
+		log.Fatal(err)
 	}
-	return carrier
+	fi, err := f.Stat()
+	if err != nil {
+		log.Fatal(err)
+	}
+	return f, fi.Size()
 }
 
-func getInput(path string) (input io.Reader, inputSize int64) {
+func getCarrier(path string) (carrier io.Reader, size int64) {
+	if path == "" {
+		return nil, -2
+	}
+	return getFile(path)
+}
+
+func getInput(path string) (input io.Reader, size int64) {
 	if path == "-" {
 		return os.Stdin, -1
 	}
-	inputFile, err := os.Open(path)
-	if err != nil {
-		log.Fatalf("failed to open input %v", err)
-	}
-	fi, err := inputFile.Stat()
-	if err != nil {
-		log.Fatalf("failed to stat input %v", err)
-	}
-	return inputFile, fi.Size()
+	return getFile(path)
 }
 
 func getArgs() argSpec {
@@ -103,7 +104,7 @@ func getArgs() argSpec {
 
 	flag.Parse()
 
-	args.carrier = getCarrier(*carrier)
+	args.carrier, args.carrierSize = getCarrier(*carrier)
 	args.input, args.inputSize = getInput(*input)
 	args.box = *box
 	args.offset = *offset
