@@ -11,19 +11,16 @@ import (
 // errors reading from the carrier io.Reader in Writer.Write.
 var ErrShortCarrier = errors.New("not enough carrier data")
 
-// Write a single byte into a chunk.
-func (c chunk) write(b byte) {
-	cur := c.read()
-	// Compare current value with what we need to write.
-	x := cur ^ b
-	// XXX Don't do anything if x == 0?
-	// The 5 high bits are the offset to the byte containing the bit
-	// to flip.
-	byteIndex := (x >> 3) & 0x1f
-	// The 3 low bits are the index of the bit to flip.
-	mask := byte(1) << (x & 0x7)
-	// Flip the bit.
-	c[byteIndex] ^= mask
+func (a *atom) xorBit(bit uint8, bitIndex) {
+	// The bits in bitIndex above 3 tell us in which atom Byte to
+	// put the bit, and the low 3 bits tell us which bit in that
+	// byte this is for.
+	// aBi: atom byte index
+	aBi := bitIndex >> 3
+	// absi: atom bit sub-index
+	absi := bitIndex & 0x7
+	// XOR the bit.
+	a.data[aBi] ^= bit << absi
 	// Done!
 }
 

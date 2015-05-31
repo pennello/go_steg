@@ -2,21 +2,42 @@
 
 package steg
 
-// Fixed chunk size for reading/writing bytes.  For every chunk of carrier
-// data, we can embed 1 byte of message data.
-const chunkSize = 32
+import (
+	"chrispennello.com/go/swar"
+)
 
-// These should range from 0 to 7.
-type bitIndex uint
+type Ctx struct {
+	atomSize  uint // in bytes
+	chunkSize uint // in bytes
+}
 
-// We _could_ define a chunk as a [32]byte, but then we'd just end up
-// implementing slices all over again...
-type chunk []byte
+type atom struct {
+	data []byte
+	ctx *Ctx
+}
 
-// The masks for the chunk.readBit implementation end up being the same as a
-// chunk.
-type byteMasks chunk
+type chunk struct {
+	data []byte
+	ctx *Ctx
+}
 
-func newChunk() chunk {
-	return chunk(make([]byte, chunkSize))
+func NewCtx(atomSize uint) *Ctx {
+	if atomSize < 1 {
+		panic("inappropriate atom size")
+	}
+	if atomSize > 3 {
+		// See the chunk.ReadBit implementation.
+		panic("unsupported atom size")
+	}
+	// (2 ^ (atomSize * 8)) / 8
+	chunkSize := uint(1) << (atomSize*8 - 3)
+	return &Ctx{atomSize: atomSize, chunkSize: chunkSize}
+}
+
+func (ctx *Ctx) newAtom() *atom {
+	return &atom{data: make([]byte, ctx.atomSize), ctx: ctx}
+}
+
+func (ctx *Ctx) newChunk() *chunk {
+	return &chunk{data: make([]byte, ctx.chunkSize), ctx: ctx}
 }

@@ -1,10 +1,20 @@
+Multi-byte TODO
+---------------
+- Tests for chunk.readAtom re-implementation.
+- Re-implement Reader.
+- Re-implement Writer.
+- Re-implement Mux.
+- Re-implement command.
+- Put bitIndex binary printing code into test.
+- Re-document everything.
+- Discuss mask calculation algorithm.
+- Discuss why bitIndex = 0, 1, 2 are special.
+
 TODO
 ----
-- user-determined, variable chunk size
 - []byte Reader channel?  use "epoll/kqueue" in Mux? maybe for loop is
   ok?
 - better way to implement chunk.readBit/Byte?
 - i/o throughput testing
-- maybe generate masks.go from something easier to read?
 - write package godoc documentation
 - web tool

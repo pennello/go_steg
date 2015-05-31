@@ -14,39 +14,56 @@ import (
 // is encountered before being able to read sufficient data.
 var ErrShortRead = errors.New("short read")
 
-// Read a single bit with index i from the chunk c.  If you iterate over
-// i from 0 to 7, you'll get the bits you need to reconstruct a whole
-// byte from a chunk.
-func (c chunk) readBit(i bitIndex) byte {
-	// Byte we'll return.  Will have the output bit set at index i.
-	ret := byte(0)
-	// Byte masks specific to this bit index.
-	masks := masksByIndex[i]
-	// Iterate through the bytes in the chunk.
-	for j := 0; j < chunkSize; j++ {
-		// First, extract the desired bits from the chunk byte
-		// by using the mask.  We then want to XOR together the
-		// bits specified by the mask.  The key is to recognize
-		// that this is the same as taking the 8-bit population
-		// count (ones count, or Hamming weight) of b, and then
-		// examining the parity.  If even, then 0; if odd, then
-		// 1.
-		r := swar.Ones8(masks[j] & c[j])
-		r = (r % 2) << i
-		// This bit result is only for this chunk byte.  XOR the
-		// bit into the return byte.
-		ret ^= r
-	}
-	return ret
+func (c *chunk) readBitMask(a *atom, bitIndex uint, mask byte, B byte) {
+	// First, extract the desired bits from the chunk byte by using
+	// the mask.
+	x := mask & B
+	// We then want to XOR together the bits specified by the mask.
+	// The key is to recognize that this is the same as taking the
+	// 8-bit population count (ones count, or Hamming weight) and
+	// then examining the parity.  If even, then 0; if odd, then 1.
+	x = swar.Ones8(x) % 2
+	// XOR the bit into the atom.
+	a.xorBit(x, bitIndex)
+	// Done!
 }
 
-// Read a byte from a chunk c.
-func (c chunk) read() byte {
-	ret := byte(0)
-	for i := bitIndex(0); i < 8; i++ {
-		ret |= c.readBit(i)
+func (c *chunk) readBit(a *atom, bitIndex uint, cBi uint, B byte) {
+	// c.ctx.atomSize won't be bigger than 3, so bitIndex will be no
+	// larger than 23, so power or thresh won't overflow an int32.
+	thresh := int32(1) << (bitIndex - 3)
+	power := thresh << 1
+	value := int32(cBi) % power
+	mask := byte(swar.IntegerSelect32(value, thresh, 0x00, 0xff))
+	return c.ReadBitMask(a, bitIndex, mask, B)
+}
+
+func (c *chunk) readAtom() *atom {
+	a := c.ctx.newAtom()
+	bits := c.ctx.atomSize * 8
+	// cBi: chunk byte index
+	for cBi := 0; cBi < c.ctx.chunkSize; cBi++ {
+		B := c.data[cBi]
+		var bitIndex uint
+		var mask byte
+
+		bitIndex = 0
+		mask = 0xaa
+		c.readBitMask(a, bitIndex, mask, B)
+
+		bitIndex = 1
+		mask = 0xcc
+		c.readBitMask(a, bitIndex, mask, B)
+
+		bitIndex = 2
+		mask = 0xf0
+		c.readBitMask(a, bitIndex, mask, B)
+
+		for bitIndex = uint(3); bitIndex < bits; bitIndex++ {
+			c.readBit(a, bitIndex, cBi, B)
+		}
 	}
-	return ret
+	return a
 }
 
 // Read a chunk from an io.Reader.  If there is an error reading, even
