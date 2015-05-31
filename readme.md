@@ -14,7 +14,6 @@ TODO
 ----
 - []byte Reader channel?  use "epoll/kqueue" in Mux? maybe for loop is
   ok?
-- better way to implement chunk.readBit/Byte?
 - i/o throughput testing
 - write package godoc documentation
 - web tool
