@@ -1,18 +1,33 @@
-// chris 052515
+// chris 052515 Common code for test routines.
 
 package steg
 
-import "log"
+import (
+	"os"
+	"strings"
+	"testing"
+	"time"
+
+	"math/rand"
+)
 
 const helloString = "hello, there, how are you? fine."
 
 // The byte embedded in the above string.
 const helloByte = 0xdb
 
-func testHelloChunk() chunk {
-	b := []byte(helloString)
-	if len(b) != chunkSize {
-		log.Panicf("test hello chunk wrong size (%v != %v)", len(b), chunkSize)
+func testHelloChunk(atomSize uint) *chunk {
+	ctx := NewCtx(atomSize)
+	c := ctx.newChunk()
+	n := len(c.data) / len(helloString)
+	if n*len(helloString) != len(c.data) {
+		panic("non-integral chunk multiple")
 	}
-	return chunk(b)
+	copy(c.data, []byte(strings.Repeat(helloString, n)))
+	return c
+}
+
+func TestMain(m *testing.M) {
+	rand.Seed(time.Now().UTC().UnixNano())
+	os.Exit(m.Run())
 }

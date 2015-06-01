@@ -1,6 +1,5 @@
 Multi-byte TODO
 ---------------
-- Tests for chunk.readAtom re-implementation.
 - Re-implement Reader.
 - Re-implement Writer.
 - Re-implement Mux.

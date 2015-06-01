@@ -2,10 +2,6 @@
 
 package steg
 
-import (
-	"chrispennello.com/go/swar"
-)
-
 type Ctx struct {
 	atomSize  uint // in bytes
 	chunkSize uint // in bytes
@@ -13,12 +9,12 @@ type Ctx struct {
 
 type atom struct {
 	data []byte
-	ctx *Ctx
+	ctx  *Ctx
 }
 
 type chunk struct {
 	data []byte
-	ctx *Ctx
+	ctx  *Ctx
 }
 
 func NewCtx(atomSize uint) *Ctx {
