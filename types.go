@@ -33,6 +33,16 @@ type Reader struct {
 	cn uint
 }
 
+// A Writer enables you to write steganographically-embedded bytes into
+// a destination io.Writer by using the data read from a carrier
+// io.Reader.  Implements io.Writer.
+type Writer struct {
+	ctx *Ctx
+
+	dst     io.Writer
+	carrier io.Reader
+}
+
 func NewCtx(atomSize uint) *Ctx {
 	if atomSize < 1 {
 		panic("inappropriate atom size")
@@ -58,4 +68,11 @@ func (ctx *Ctx) newChunk() *chunk {
 // steganographically-embedded bytes from the source io.Reader.
 func (ctx *Ctx) NewReader(src io.Reader) *Reader {
 	return &Reader{ctx: ctx, src: src, cur: nil, cn: 0}
+}
+
+// NewWriter returns a fresh Writer, ready to write
+// steganographically-embedded bytes to the destination io.Writer using
+// the data from the carrier io.Reader.
+func (ctx *Ctx) NewWriter(dst io.Writer, carrier io.Reader) *Writer {
+	return &Writer{ctx: ctx, dst: dst, carrier: carrier}
 }

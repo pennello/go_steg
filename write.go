@@ -24,21 +24,6 @@ func (a *atom) xorBit(bit uint8, bitIndex uint) {
 	// Done!
 }
 
-//// A Writer enables you to write steganographically-embedded bytes into
-//// a destination io.Writer by using the data read from a carrier
-//// io.Reader.  Implements io.Writer.
-//type Writer struct {
-//	dst     io.Writer
-//	carrier io.Reader
-//}
-//
-//// NewWriter returns a fresh Writer, ready to write
-//// steganographically-embedded bytes to the destination io.Writer using
-//// the data from the carrier io.Reader.
-//func NewWriter(dst io.Writer, carrier io.Reader) Writer {
-//	return Writer{dst: dst, carrier: carrier}
-//}
-//
 //// Write chunk into destination io.Reader.
 //func (w Writer) write(c chunk) error {
 //	// XXX Can io.Writer.Write return an error even if n = len(p)?
