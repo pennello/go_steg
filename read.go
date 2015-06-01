@@ -3,16 +3,16 @@
 package steg
 
 import (
-	//"errors"
-	//"io"
-	//"io/ioutil"
+	"errors"
+	"io"
+	"io/ioutil"
 
 	"chrispennello.com/go/swar"
 )
 
-//// ErrShortRead will be returned from Read and Reader.Read when an EOF
-//// is encountered before being able to read sufficient data.
-//var ErrShortRead = errors.New("short read")
+// ErrShortRead will be returned from Read and Reader.Read when an EOF
+// is encountered before being able to read sufficient data.
+var ErrShortRead = errors.New("short read")
 
 func (c *chunk) readBitMask(a *atom, bitIndex uint, mask byte, B byte) {
 	// First, extract the desired bits from the chunk byte by using
@@ -44,81 +44,67 @@ func (c *chunk) readAtom() *atom {
 	// cBi: chunk byte index
 	for cBi := uint(0); cBi < c.ctx.chunkSize; cBi++ {
 		B := c.data[cBi]
-		var bitIndex uint
-		var mask byte
 
-		bitIndex = 0
-		mask = 0xaa
-		c.readBitMask(a, bitIndex, mask, B)
+		c.readBitMask(a, 0, 0xaa, B)
+		c.readBitMask(a, 1, 0xcc, B)
+		c.readBitMask(a, 2, 0xf0, B)
 
-		bitIndex = 1
-		mask = 0xcc
-		c.readBitMask(a, bitIndex, mask, B)
-
-		bitIndex = 2
-		mask = 0xf0
-		c.readBitMask(a, bitIndex, mask, B)
-
-		for bitIndex = uint(3); bitIndex < bits; bitIndex++ {
+		for bitIndex := uint(3); bitIndex < bits; bitIndex++ {
 			c.readBit(a, bitIndex, cBi, B)
 		}
 	}
 	return a
 }
 
-//// Read a chunk from an io.Reader.  If there is an error reading, even
-//// after completely reading the chunk, that error is returned.  Sort of
-//// similar to io.Reader.Read, returns a boolean complete--whether we
-//// completely read the chunk.  Returns an error iff no data was read.
-//func readChunk(c chunk, r io.Reader) (err error) {
-//	_, err = io.ReadFull(r, []byte(c))
-//	if err == io.EOF || err == io.ErrUnexpectedEOF {
-//		err = ErrShortRead
-//	}
-//	return err
-//}
+// Read into a chunk from an io.Reader.  If there is an error reading,
+// even after completely reading the chunk, that error is returned.
+// Returns an error iff the chunk was not completely read.
+func readChunk(c *chunk, r io.Reader) error {
+	_, err := io.ReadFull(r, c.data)
+	if err == io.EOF || err == io.ErrUnexpectedEOF {
+		err = ErrShortRead
+	}
+	return err
+}
+
+// Read steganographically-embedded bytes from the underlying source
+// io.Reader.  Returns the number of bytes read as well as an error, if
+// one occurred.
 //
-//// A Reader wraps an io.Reader and reads steganographically-embedded
-//// bytes from it.  Implements io.Reader.
-//type Reader struct {
-//	src io.Reader
-//}
+// Can return io.EOF or io.ErrUnexpectedEOF if an EOF was encountered
+// before being able to read a sufficient number of bytes to extract the
+// requested amount of data.
 //
-//// NewReader returns a fresh Reader, ready to read
-//// steganographically-embedded bytes from the source io.Reader.
-//func NewReader(src io.Reader) Reader {
-//	return Reader{src: src}
-//}
+// n == len(p) iff err != nil
+func (r *Reader) Read(p []byte) (n int, err error) {
+	c := r.ctx.newChunk()
+	for n < len(p) {
+		if r.cur == nil {
+			err := readChunk(c, r.src)
+			if err != nil {
+				return n, err
+			}
+			r.cur = c.readAtom()
+			r.cn = c.ctx.atomSize
+		}
+		nn := copy(p[n:], r.cur.data[c.ctx.atomSize-r.cn:])
+		n += nn
+		r.cn -= uint(nn)
+		if r.cn == 0 {
+			r.cur = nil
+		}
+	}
+	return n, err
+}
+
+// Discard reads n bytes into ioutil.Discard, throwing them away.
 //
-//// Read steganographically-embedded bytes from the underlying source
-//// io.Reader.  Returns the number of bytes read as well as an error, if
-//// one occurred.
-////
-//// Can return io.EOF or io.ErrUnexpectedEOF if an EOF was encountered
-//// before being able to read a sufficient number of bytes to extract the
-//// requested amount of data.
-////
-//// n == len(p) iff err != nil
-//func (r Reader) Read(p []byte) (n int, err error) {
-//	c := newChunk()
-//	for ; n < len(p); n++ {
-//		err = readChunk(c, r.src)
-//		if err != nil {
-//			return n, err
-//		}
-//		p[n] = c.read()
-//	}
-//	return n, err
-//}
+// The idea is that you'd call this to jump ahead by some offset in the
+// carrier data before you start reading your
+// steganographically-embedded data.
 //
-//// Discard reads n bytes into ioutil.Discard, throwing them away.
-////
-//// The idea is that you'd call this to jump ahead by some offset in the
-//// carrier data before you start reading your
-//// steganographically-embedded data.
-////
-//// Counterpart to Writer.CopyN.
-//func (r Reader) Discard(n int64) (err error) {
-//	_, err = io.CopyN(ioutil.Discard, r.src, n)
-//	return err
-//}
+// Counterpart to Writer.CopyN and Mux.CopyN.
+func (r *Reader) Discard(n int64) error {
+	_, err := io.CopyN(ioutil.Discard, r.src, n)
+	return err
+}

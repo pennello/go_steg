@@ -1,6 +1,5 @@
 Multi-byte TODO
 ---------------
-- Re-implement Reader.
 - Re-implement Writer.
 - Re-implement Mux.
 - Re-implement command.

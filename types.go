@@ -2,19 +2,35 @@
 
 package steg
 
+import "io"
+
 type Ctx struct {
 	atomSize  uint // in bytes
 	chunkSize uint // in bytes
 }
 
 type atom struct {
-	data []byte
 	ctx  *Ctx
+	data []byte
 }
 
 type chunk struct {
-	data []byte
 	ctx  *Ctx
+	data []byte
+}
+
+// A Reader wraps an io.Reader and reads steganographically-embedded
+// bytes from it.  Implements io.Reader.
+type Reader struct {
+	ctx *Ctx
+	src io.Reader
+
+	// Current atom whose bytes we're returning when Read calls are
+	// made.
+	cur *atom
+	// Remaining bytes before the current atom is exhausted and we
+	// need to get another one.
+	cn uint
 }
 
 func NewCtx(atomSize uint) *Ctx {
@@ -31,9 +47,15 @@ func NewCtx(atomSize uint) *Ctx {
 }
 
 func (ctx *Ctx) newAtom() *atom {
-	return &atom{data: make([]byte, ctx.atomSize), ctx: ctx}
+	return &atom{ctx: ctx, data: make([]byte, ctx.atomSize)}
 }
 
 func (ctx *Ctx) newChunk() *chunk {
-	return &chunk{data: make([]byte, ctx.chunkSize), ctx: ctx}
+	return &chunk{ctx: ctx, data: make([]byte, ctx.chunkSize)}
+}
+
+// NewReader returns a fresh Reader, ready to read
+// steganographically-embedded bytes from the source io.Reader.
+func (ctx *Ctx) NewReader(src io.Reader) *Reader {
+	return &Reader{ctx: ctx, src: src, cur: nil, cn: 0}
 }
