@@ -14,6 +14,14 @@ import (
 // is encountered before being able to read sufficient data.
 var ErrShortRead = errors.New("short read")
 
+func (a *atom) asUint() uint {
+	r := uint(0)
+	for i := uint(0); i < a.ctx.atomSize; i++ {
+		r |= uint(a.data[i]) << (i * 8)
+	}
+	return r
+}
+
 func (c *chunk) readBitMask(a *atom, bitIndex uint, mask byte, B byte) {
 	// First, extract the desired bits from the chunk byte by using
 	// the mask.

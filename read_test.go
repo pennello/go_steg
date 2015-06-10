@@ -7,7 +7,10 @@ import (
 	"strings"
 	"testing"
 
-	"math/rand"
+	"encoding/binary"
+
+	cryptorand "crypto/rand"
+	mathrand "math/rand"
 )
 
 func testReadAtomHello1(t *testing.T) {
@@ -31,7 +34,7 @@ func testReadAtomHello2(t *testing.T) {
 func testReadAtomRepeat(t *testing.T, atomSize uint) {
 	ctx := NewCtx(atomSize)
 	c := ctx.newChunk()
-	s := string(rand.Intn(256))
+	s := string(mathrand.Intn(256))
 	copy(c.data, []byte(strings.Repeat(s, int(ctx.chunkSize))))
 	a := c.readAtom()
 	// Since everything is just a repeated single byte, should get
@@ -174,4 +177,33 @@ func TestReader(t *testing.T) {
 	testReaderShortRead1(t, 2)
 	testReaderShortRead2(t, 1)
 	testReaderShortRead2(t, 2)
+}
+
+func testAsUint(t *testing.T, a *atom) {
+	p := make([]byte, 4)
+	copy(p, a.data)
+	out := a.asUint()
+	expect := uint(binary.LittleEndian.Uint32(p))
+	if out != expect {
+		t.Errorf("(%v).asUint() != %v (was %v)", a.data, expect, out)
+	}
+}
+
+func testAsUintCtx(t *testing.T, atomSize uint) {
+	ctx := NewCtx(atomSize)
+	for i := 0; i < 1000; i++ {
+		a := ctx.newAtom()
+		_, err := cryptorand.Read(a.data)
+		if err != nil {
+			t.Error(err)
+			return
+		}
+		testAsUint(t, a)
+	}
+}
+
+func TestAsUint(t *testing.T) {
+	testAsUintCtx(t, 1)
+	testAsUintCtx(t, 2)
+	testAsUintCtx(t, 3)
 }
