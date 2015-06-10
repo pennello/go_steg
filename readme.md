@@ -1,6 +1,5 @@
 Multi-byte TODO
 ---------------
-- Re-implement Mux.
 - Re-implement command.
 - Put bitIndex binary printing code into test.
 - Re-document everything.

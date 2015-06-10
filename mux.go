@@ -4,21 +4,6 @@ package steg
 
 import "io"
 
-// Mux multiplexes a message on a carrier into a destination.  It
-// steganographically embeds data from the message into the carrier and
-// then writes the modified data into the destination.
-type Mux struct {
-	w   Writer
-	msg io.Reader
-}
-
-// NewMux returns a fresh Mux, ready to multiplex a message on a carrier
-// into a destination.
-func NewMux(dst io.Writer, carrier, msg io.Reader) Mux {
-	w := NewWriter(dst, carrier)
-	return Mux{w: w, msg: msg}
-}
-
 // Mux reads, one byte at a time, from the message reader,
 // steganographically embeds its data into the data read from the
 // carrier, and then writes the resultant data into the destination
@@ -28,22 +13,35 @@ func NewMux(dst io.Writer, carrier, msg io.Reader) Mux {
 // Can return ErrShortCarrier if an EOF was encountered before being
 // able to read a sufficient number amount of data from the carrier for
 // the message.  Can return other errors as well encountered during the
-// writes.  Successful iff err != nil.
+// writes.
+//
+// Can return ErrInsufficientData if the reader does not contain
+// sufficient data to read an integral number of atoms.
+//
+// Successful iff err != nil.
 func (m Mux) Mux() (err error) {
-	// XXX Just reading one byte at a time for simplicity.  The
+	// Would be nice if we could just call io.Copy, but the buffer
+	// size isn't ensured to be a multiple of the atom size.
+
+	// XXX Just reading one atom at a time for simplicity.  The
 	// caller can certainly wrap its readers and writers in buffered
 	// versions, but this is still internally a lot of function
 	// calls for a reasonable amount of data...
-	b := make([]byte, 1)
+
+	var n int
+	a := m.ctx.newAtom()
 	for {
-		_, err = io.ReadFull(m.msg, b)
+		n, err = io.ReadFull(m.msg, a.data)
 		if err != nil {
-			if err != io.EOF {
-				return err
+			if err == io.EOF {
+				if n == 0 {
+					break
+				}
+				return ErrInsufficientData
 			}
-			break
+			return err
 		}
-		_, err = m.w.Write(b)
+		_, err = m.w.Write(a.data)
 		if err != nil {
 			return err
 		}

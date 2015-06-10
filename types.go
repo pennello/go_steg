@@ -43,6 +43,16 @@ type Writer struct {
 	carrier io.Reader
 }
 
+// Mux multiplexes a message on a carrier into a destination.  It
+// steganographically embeds data from the message into the carrier and
+// then writes the modified data into the destination.
+type Mux struct {
+	ctx *Ctx
+
+	w   *Writer
+	msg io.Reader
+}
+
 func NewCtx(atomSize uint) *Ctx {
 	if atomSize < 1 {
 		panic("inappropriate atom size")
@@ -75,4 +85,11 @@ func (ctx *Ctx) NewReader(src io.Reader) *Reader {
 // the data from the carrier io.Reader.
 func (ctx *Ctx) NewWriter(dst io.Writer, carrier io.Reader) *Writer {
 	return &Writer{ctx: ctx, dst: dst, carrier: carrier}
+}
+
+// NewMux returns a fresh Mux, ready to multiplex a message on a carrier
+// into a destination.
+func (ctx *Ctx) NewMux(dst io.Writer, carrier, msg io.Reader) Mux {
+	w := ctx.NewWriter(dst, carrier)
+	return Mux{w: w, msg: msg}
 }
