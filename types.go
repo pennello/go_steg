@@ -91,5 +91,5 @@ func (ctx *Ctx) NewWriter(dst io.Writer, carrier io.Reader) *Writer {
 // into a destination.
 func (ctx *Ctx) NewMux(dst io.Writer, carrier, msg io.Reader) Mux {
 	w := ctx.NewWriter(dst, carrier)
-	return Mux{w: w, msg: msg}
+	return Mux{ctx: ctx, w: w, msg: msg}
 }
