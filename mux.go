@@ -15,8 +15,9 @@ import "io"
 // the message.  Can return other errors as well encountered during the
 // writes.
 //
-// Can return ErrInsufficientData if the reader does not contain
-// sufficient data to read an integral number of atoms.
+// If the reader does not contain sufficient data to read an integral
+// number of atoms the final partial atom read will be padded with zero
+// bytes and embedded into the carrier.
 //
 // Successful iff err != nil.
 func (m Mux) Mux() (err error) {
@@ -34,10 +35,18 @@ func (m Mux) Mux() (err error) {
 		n, err = io.ReadFull(m.msg, a.data)
 		if err != nil {
 			if err == io.EOF {
-				if n == 0 {
-					break
-				}
-				return ErrInsufficientData
+				// We're all done reading from
+				// the message reader.
+				break
+			}
+			if err == io.ErrUnexpectedEOF {
+				// That's ok, we read some of the bytes.
+				// Zero out the remaining, though, as
+				// they might have been used for
+				// scratch, or contain data from the
+				// previous read.
+				a.zero(n)
+				break
 			}
 			return err
 		}

@@ -37,6 +37,13 @@ func (a *atom) xor(b *atom) {
 	}
 }
 
+// Zero out the bytes in the atom's data starting at the given offset.
+func (a *atom) zero(off int) {
+	for ; off < int(a.ctx.atomSize); off++ {
+		a.data[off] = 0
+	}
+}
+
 // Copy data into a.data.
 func (a *atom) copy(data []byte) {
 	if uint(len(data)) != a.ctx.atomSize {
