@@ -3,6 +3,8 @@
 // Steg is a command-line interface to the steganographic embedding
 // package steg of which it is a part.
 //
+// The atom size may be specified as 1, 2, or 3.  The default is 1.
+//
 // Input can be provided either as a path, or from the default, standard
 // in.
 //
@@ -31,8 +33,12 @@
 // for use with the size-checking encapsulation format.  Of course, if
 // the input data is small, then this isn't an issue.
 //
+// You are responsible for ensuring that the carrier data is sufficient
+// to embed the input data.
+//
 // Options are:
 //
+//	-atomsize=1: atom size (1, 2, or 3)
 //	-box=false:  use size-checking encapsulation format
 //	-carrier="": path to message carrier
 //	-input="-":  path to input; can be - for standard in
@@ -53,6 +59,7 @@ import (
 )
 
 type argSpec struct {
+	ctx         *steg.Ctx
 	carrier     io.Reader
 	carrierSize int64
 	input       io.Reader
@@ -90,6 +97,9 @@ func getInput(path string) (input io.Reader, size int64) {
 func getArgs() argSpec {
 	var args argSpec
 
+	atomSizeUsage := "atom size (1, 2, or 3)"
+	atomSize := flag.Uint("atomsize", 1, atomSizeUsage)
+
 	carrierUsage := "path to message carrier"
 	carrier := flag.String("carrier", "", carrierUsage)
 
@@ -104,6 +114,11 @@ func getArgs() argSpec {
 
 	flag.Parse()
 
+	if *atomSize < 1 || *atomSize > 3 {
+		log.Fatalf("atom size must be 1, 2, or 3")
+	}
+
+	args.ctx = steg.NewCtx(*atomSize)
 	args.carrier, args.carrierSize = getCarrier(*carrier)
 	args.input, args.inputSize = getInput(*input)
 	args.box = *box
@@ -118,7 +133,7 @@ func getArgs() argSpec {
 
 func extract(args argSpec) {
 	var err error
-	sr := steg.NewReader(args.input)
+	sr := args.ctx.NewReader(args.input)
 	if args.offset != 0 {
 		err = sr.Discard(args.offset)
 		if err != nil {
@@ -146,7 +161,7 @@ func mux(args argSpec) {
 	if args.box {
 		message = databox.NewMarshaller(args.input, args.inputSize)
 	}
-	m := steg.NewMux(os.Stdout, args.carrier, message)
+	m := args.ctx.NewMux(os.Stdout, args.carrier, message)
 	if args.offset != 0 {
 		_, err = m.CopyN(args.offset)
 		if err != nil {

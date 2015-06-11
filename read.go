@@ -14,63 +14,81 @@ import (
 // is encountered before being able to read sufficient data.
 var ErrShortRead = errors.New("short read")
 
-// Read a single bit with index i from the chunk c.  If you iterate over
-// i from 0 to 7, you'll get the bits you need to reconstruct a whole
-// byte from a chunk.
-func (c chunk) readBit(i bitIndex) byte {
-	// Byte we'll return.  Will have the output bit set at index i.
-	ret := byte(0)
-	// Byte masks specific to this bit index.
-	masks := masksByIndex[i]
-	// Iterate through the bytes in the chunk.
-	for j := 0; j < chunkSize; j++ {
-		// First, extract the desired bits from the chunk byte
-		// by using the mask.  We then want to XOR together the
-		// bits specified by the mask.  The key is to recognize
-		// that this is the same as taking the 8-bit population
-		// count (ones count, or Hamming weight) of b, and then
-		// examining the parity.  If even, then 0; if odd, then
-		// 1.
-		r := swar.Ones8(masks[j] & c[j])
-		r = (r % 2) << i
-		// This bit result is only for this chunk byte.  XOR the
-		// bit into the return byte.
-		ret ^= r
+func (a *atom) asUint() uint {
+	r := uint(0)
+	for i := uint(0); i < a.ctx.atomSize; i++ {
+		r |= uint(a.data[i]) << (i * 8)
 	}
-	return ret
+	return r
 }
 
-// Read a byte from a chunk c.
-func (c chunk) read() byte {
-	ret := byte(0)
-	for i := bitIndex(0); i < 8; i++ {
-		ret |= c.readBit(i)
-	}
-	return ret
+func (c *chunk) readBitMask(a *atom, bitIndex uint, mask byte, B byte) {
+	// First, extract the desired bits from the chunk byte by using
+	// the mask.
+	x := mask & B
+	// We then want to XOR together the bits specified by the mask.
+	// The key is to recognize that this is the same as taking the
+	// 8-bit population count (ones count, or Hamming weight) and
+	// then examining the parity.  If even, then 0; if odd, then 1.
+	x = swar.Ones8(x) % 2
+	// XOR the bit into the atom.
+	a.xorBit(x, bitIndex)
+	// Done!
 }
 
-// Read a chunk from an io.Reader.  If there is an error reading, even
-// after completely reading the chunk, that error is returned.  Sort of
-// similar to io.Reader.Read, returns a boolean complete--whether we
-// completely read the chunk.  Returns an error iff no data was read.
-func readChunk(c chunk, r io.Reader) (err error) {
-	_, err = io.ReadFull(r, []byte(c))
+func (c *chunk) readBit(a *atom, bitIndex uint, cBi uint, B byte) {
+	// We compute the power of two threshold for this bit index.  If
+	// the byte index is above this value (mod power), then we will
+	// include these bytes in the xor for this bit.  If it's below,
+	// then we will not.  This is expressed as using a mask of
+	// either 0xff (for inclusion) or 0x00 (for exclusion).  This
+	// threshold exponentially increases with each bitIndex until
+	// ultimately we are excluding the entirety of the bottom half
+	// of the bytes and including the entirety of the top half.  See
+	// the table in the notes.
+
+	// c.ctx.atomSize won't be bigger than 3, so bitIndex will be no
+	// larger than 23, so power or thresh won't overflow an int32.
+	thresh := int32(1) << (bitIndex - 3)
+	power := thresh << 1
+	value := int32(cBi) % power
+	mask := byte(swar.IntegerSelect32(value, thresh, 0x00, 0xff))
+	c.readBitMask(a, bitIndex, mask, B)
+}
+
+func (c *chunk) readAtom() *atom {
+	a := c.ctx.newAtom()
+	bits := c.ctx.atomSize * 8
+	// cBi: chunk byte index
+	for cBi := uint(0); cBi < c.ctx.chunkSize; cBi++ {
+		B := c.data[cBi]
+
+		// Bit indexes 0, 1, and 2 are special.  This is because
+		// for these index values, the bits to be selected from
+		// the chunk data are all within a byte.  Above these
+		// bit indexes, we simply select particular *bytes* _en
+		// masse_, but below them, we must select subsets of
+		// bits within the bytes.
+		c.readBitMask(a, 0, 0xaa, B)
+		c.readBitMask(a, 1, 0xcc, B)
+		c.readBitMask(a, 2, 0xf0, B)
+
+		for bitIndex := uint(3); bitIndex < bits; bitIndex++ {
+			c.readBit(a, bitIndex, cBi, B)
+		}
+	}
+	return a
+}
+
+// Read into a chunk from an io.Reader.  If there is an error reading,
+// even after completely reading the chunk, that error is returned.
+// Returns an error iff the chunk was not completely read.
+func readChunk(c *chunk, r io.Reader) error {
+	_, err := io.ReadFull(r, c.data)
 	if err == io.EOF || err == io.ErrUnexpectedEOF {
 		err = ErrShortRead
 	}
 	return err
-}
-
-// A Reader wraps an io.Reader and reads steganographically-embedded
-// bytes from it.  Implements io.Reader.
-type Reader struct {
-	src io.Reader
-}
-
-// NewReader returns a fresh Reader, ready to read
-// steganographically-embedded bytes from the source io.Reader.
-func NewReader(src io.Reader) Reader {
-	return Reader{src: src}
 }
 
 // Read steganographically-embedded bytes from the underlying source
@@ -82,14 +100,28 @@ func NewReader(src io.Reader) Reader {
 // requested amount of data.
 //
 // n == len(p) iff err != nil
-func (r Reader) Read(p []byte) (n int, err error) {
-	c := newChunk()
-	for ; n < len(p); n++ {
-		err = readChunk(c, r.src)
-		if err != nil {
-			return n, err
+//
+// Note that the current implementation is somewhat naive.  Each chunk
+// is read completely into memory from the underlying source reader.  In
+// particular, for atom size 3, this means that 2MiB at a time will be
+// read into memory.
+func (r *Reader) Read(p []byte) (n int, err error) {
+	c := r.ctx.newChunk()
+	for n < len(p) {
+		if r.cur == nil {
+			err := readChunk(c, r.src)
+			if err != nil {
+				return n, err
+			}
+			r.cur = c.readAtom()
+			r.cn = c.ctx.atomSize
 		}
-		p[n] = c.read()
+		nn := copy(p[n:], r.cur.data[c.ctx.atomSize-r.cn:])
+		n += nn
+		r.cn -= uint(nn)
+		if r.cn == 0 {
+			r.cur = nil
+		}
 	}
 	return n, err
 }
@@ -100,8 +132,8 @@ func (r Reader) Read(p []byte) (n int, err error) {
 // carrier data before you start reading your
 // steganographically-embedded data.
 //
-// Counterpart to Writer.CopyN.
-func (r Reader) Discard(n int64) (err error) {
-	_, err = io.CopyN(ioutil.Discard, r.src, n)
+// Counterpart to Writer.CopyN and Mux.CopyN.
+func (r *Reader) Discard(n int64) error {
+	_, err := io.CopyN(ioutil.Discard, r.src, n)
 	return err
 }

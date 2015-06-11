@@ -6,83 +6,139 @@ import (
 	"bytes"
 	"strings"
 	"testing"
+
+	"encoding/binary"
+
+	cryptorand "crypto/rand"
+	mathrand "math/rand"
 )
 
-func testReadByte(t *testing.T, c chunk) byte {
-	r := c.read()
-	//t.Logf("chunk: %#v; read: %#v", string(c), r)
-	return r
-}
-
-func testReadByteHello(t *testing.T) {
-	out := testReadByte(t, testHelloChunk())
-	if out != helloByte {
-		t.Errorf("didn't get back u with hat (got %#v)", out)
+func testReadAtomHello1(t *testing.T) {
+	ctx := NewCtx(1)
+	c := ctx.newChunk()
+	copy(c.data, []byte(helloString))
+	a := c.readAtom()
+	if a.data[0] != helloByte {
+		t.Fail()
 	}
 }
 
-func TestReadByte(t *testing.T) {
-	testReadByteHello(t)
-	for i := bitIndex(0); i < 8; i++ {
-		if testReadByte(t, chunk(masksByIndex[i])) != 0 {
-			t.Errorf("mask at index %v didn't yield 0", i)
-		}
+func testReadAtomHello2(t *testing.T) {
+	c := testHelloChunk(1)
+	a := c.readAtom()
+	if a.data[0] != helloByte {
+		t.Fail()
 	}
 }
 
-func testReadChunkHello(t *testing.T) {
+func testReadAtomRepeat(t *testing.T, atomSize uint) {
+	ctx := NewCtx(atomSize)
+	c := ctx.newChunk()
+	s := string(mathrand.Intn(256))
+	copy(c.data, []byte(strings.Repeat(s, int(ctx.chunkSize))))
+	a := c.readAtom()
+	// Since everything is just a repeated single byte, should get
+	// all 0s back.
+	if !bytes.Equal(a.data, make([]byte, ctx.atomSize)) {
+		t.Fail()
+	}
+}
+
+func TestReadAtom(t *testing.T) {
+	testReadAtomHello1(t)
+	testReadAtomHello2(t)
+	testReadAtomRepeat(t, 1)
+	testReadAtomRepeat(t, 2)
+}
+
+func testReadChunkHello(t *testing.T, atomSize uint) {
 	const repeat = 3
-	r := bytes.NewReader([]byte(strings.Repeat(string(testHelloChunk()), repeat)))
-	c := newChunk()
+	ctx := NewCtx(atomSize)
+	hc := testHelloChunk(atomSize)
+	s := strings.Repeat(string(hc.data), repeat)
+	r := bytes.NewReader([]byte(s))
+	c := ctx.newChunk()
 	err := readChunk(c, r)
 	if err != nil {
 		t.Errorf("read error %v", err)
 		return
 	}
-	if !bytes.Equal([]byte(c), []byte(testHelloChunk())) {
-		t.Errorf("didn't read hello back, got %#v", string(c))
+	ref := testHelloChunk(atomSize)
+	if !bytes.Equal(c.data, ref.data) {
+		t.Errorf("didn't read hello back, got %#v", string(c.data))
 	}
 }
 
-func testReadChunkShortRead(t *testing.T) {
-	r := bytes.NewReader([]byte(testHelloChunk())[:30])
-	c := newChunk()
+func testReadChunkShortRead(t *testing.T, atomSize uint) {
+	ctx := NewCtx(atomSize)
+	r := bytes.NewReader(testHelloChunk(atomSize).data[:ctx.chunkSize*2/3])
+	c := ctx.newChunk()
 	err := readChunk(c, r)
 	if err == nil {
-		t.Errorf("no error, c = %#v", string(c))
+		t.Errorf("no error, c = %#v", string(c.data))
 	}
 }
 
 func TestReadChunk(t *testing.T) {
-	testReadChunkHello(t)
-	testReadChunkShortRead(t)
+	testReadChunkHello(t, 1)
+	testReadChunkHello(t, 2)
+	testReadChunkShortRead(t, 1)
+	testReadChunkShortRead(t, 2)
 }
 
 func testReaderHello(t *testing.T) {
 	const repeat = 3
-	b := bytes.NewBuffer([]byte(strings.Repeat(string(testHelloChunk()), repeat)))
-	r := NewReader(b)
-	out := make([]byte, repeat)
+	const atomSize = 1
+	ctx := NewCtx(atomSize)
+	s := string(testHelloChunk(atomSize).data)
+	src := bytes.NewBuffer([]byte(strings.Repeat(s, repeat)))
+	r := ctx.NewReader(src)
+	out := make([]byte, atomSize*repeat)
 	n, err := r.Read(out)
-	if n != repeat {
-		t.Errorf("didn't read enough bytes")
+	if n != len(out) {
+		t.Errorf("didn't read enough bytes, atomSize = %v", atomSize)
 		return
 	}
 	if err != nil {
-		t.Errorf("read error %v", err)
+		t.Errorf("read error %v, atomSize = %v", err, atomSize)
 		return
 	}
-	expect := []byte(strings.Repeat(string([]byte{helloByte}), repeat))
+	expect := []byte(strings.Repeat(string([]byte{helloByte}), int(atomSize)*repeat))
 	if !bytes.Equal(out, expect) {
 		t.Errorf("unexpected string read %#v (expected %#v)", out, expect)
 	}
 }
 
-func testReaderShortRead1(t *testing.T) {
+func testReaderLorem(t *testing.T) {
 	const repeat = 3
-	b := bytes.NewBuffer([]byte(strings.Repeat(string(testHelloChunk()), repeat)))
-	r := NewReader(b)
-	requestedBytes := repeat + 1
+	const atomSize = 2
+	ctx := NewCtx(atomSize)
+	s := string(testLoremChunk().data)
+	src := bytes.NewBuffer([]byte(strings.Repeat(s, repeat)))
+	r := ctx.NewReader(src)
+	out := make([]byte, atomSize*repeat)
+	n, err := r.Read(out)
+	if n != len(out) {
+		t.Errorf("didn't read enough bytes, atomSize = %v", atomSize)
+		return
+	}
+	if err != nil {
+		t.Errorf("read error %v, atomSize = %v", err, atomSize)
+		return
+	}
+	expect := []byte(strings.Repeat(string(loremBytes), repeat))
+	if !bytes.Equal(out, expect) {
+		t.Errorf("unexpected string read %#v (expected %#v)", out, expect)
+	}
+}
+
+func testReaderShortRead1(t *testing.T, atomSize uint) {
+	const repeat = 3
+	ctx := NewCtx(atomSize)
+	s := string(testHelloChunk(atomSize).data)
+	b := bytes.NewBuffer([]byte(strings.Repeat(s, repeat)))
+	r := ctx.NewReader(b)
+	requestedBytes := int(atomSize)*repeat + 1
 	out := make([]byte, requestedBytes)
 	n, err := r.Read(out)
 	if n == requestedBytes {
@@ -95,11 +151,13 @@ func testReaderShortRead1(t *testing.T) {
 	}
 }
 
-func testReaderShortRead2(t *testing.T) {
+func testReaderShortRead2(t *testing.T, atomSize uint) {
 	const repeat = 2
-	b := bytes.NewBuffer([]byte(strings.Repeat(string(testHelloChunk()), repeat))[:48])
-	r := NewReader(b)
-	requestedBytes := repeat
+	ctx := NewCtx(atomSize)
+	s := string(testHelloChunk(atomSize).data)
+	b := bytes.NewBuffer([]byte(strings.Repeat(s, repeat))[:ctx.chunkSize*2/3])
+	r := ctx.NewReader(b)
+	requestedBytes := int(atomSize) * repeat
 	out := make([]byte, requestedBytes)
 	n, err := r.Read(out)
 	if n == requestedBytes {
@@ -114,6 +172,38 @@ func testReaderShortRead2(t *testing.T) {
 
 func TestReader(t *testing.T) {
 	testReaderHello(t)
-	testReaderShortRead1(t)
-	testReaderShortRead2(t)
+	testReaderLorem(t)
+	testReaderShortRead1(t, 1)
+	testReaderShortRead1(t, 2)
+	testReaderShortRead2(t, 1)
+	testReaderShortRead2(t, 2)
+}
+
+func testAsUint(t *testing.T, a *atom) {
+	p := make([]byte, 4)
+	copy(p, a.data)
+	out := a.asUint()
+	expect := uint(binary.LittleEndian.Uint32(p))
+	if out != expect {
+		t.Errorf("(%v).asUint() != %v (was %v)", a.data, expect, out)
+	}
+}
+
+func testAsUintCtx(t *testing.T, atomSize uint) {
+	ctx := NewCtx(atomSize)
+	for i := 0; i < 1000; i++ {
+		a := ctx.newAtom()
+		_, err := cryptorand.Read(a.data)
+		if err != nil {
+			t.Error(err)
+			return
+		}
+		testAsUint(t, a)
+	}
+}
+
+func TestAsUint(t *testing.T) {
+	testAsUintCtx(t, 1)
+	testAsUintCtx(t, 2)
+	testAsUintCtx(t, 3)
 }
