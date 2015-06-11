@@ -17,14 +17,17 @@
 // written to standard out.
 //
 // An offset may be specified on both read and write.  The idea is to
-// avoid overwriting sensitive headers in the carrier data.
+// avoid overwriting sensitive headers in the carrier data.  Note that
+// specifying an offset effectivly reduces the size of the carrier
+// available to embed your message.
 //
 // Frequently, the data to be embedded will be less than the capacity
 // provided by the carrier.  In this case, on extraction, you'll want
 // some way to know not to read more than was embedded.  A mechanism for
 // this is provided with the box flag.  This will enable the use of a
 // simple size-checking encapsulation format.  If you use it on write,
-// you'll want to use it on read as well.
+// you'll want to use it on read as well.  Note that using the box flag
+// effectively increases the size of your input data.
 //
 // If you are embedding input data into a carrier with the box flag, and
 // the input data is large, you may want to specify a path to the input
@@ -33,8 +36,9 @@
 // for use with the size-checking encapsulation format.  Of course, if
 // the input data is small, then this isn't an issue.
 //
-// You are responsible for ensuring that the carrier data is sufficient
-// to embed the input data.
+// When embedding, steg will check the effective input data size against
+// the capacity of the effective carrier size.  If it's insufficient,
+// steg will error out early with an informative message.
 //
 // Options are:
 //
@@ -153,9 +157,12 @@ func extract() {
 
 func mux() {
 	var err error
+	inputSize := state.inputSize
+	carrierSize := state.carrierSize
 	message := state.input
 	if state.box {
 		message = databox.NewMarshaller(state.input, state.inputSize)
+		inputSize += databox.HeaderSize
 	}
 	m := state.ctx.NewMux(os.Stdout, state.carrier, message)
 	if state.offset != 0 {
@@ -163,6 +170,11 @@ func mux() {
 		if err != nil {
 			log.Fatalf("mux error: %v", err)
 		}
+		carrierSize -= state.offset
+	}
+	capacity := state.ctx.Capacity(carrierSize)
+	if capacity < inputSize {
+		log.Fatalf("mux error: input size %v > capacity %v", inputSize, capacity)
 	}
 	err = m.Mux()
 	if err != nil {
