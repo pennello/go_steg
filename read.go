@@ -37,6 +37,16 @@ func (c *chunk) readBitMask(a *atom, bitIndex uint, mask byte, B byte) {
 }
 
 func (c *chunk) readBit(a *atom, bitIndex uint, cBi uint, B byte) {
+	// We compute the power of two threshold for this bit index.  If
+	// the byte index is above this value (mod power), then we will
+	// include these bytes in the xor for this bit.  If it's below,
+	// then we will not.  This is expressed as using a mask of
+	// either 0xff (for inclusion) or 0x00 (for exclusion).  This
+	// threshold exponentially increases with each bitIndex until
+	// ultimately we are excluding the entirety of the bottom half
+	// of the bytes and including the entirety of the top half.  See
+	// the table in the notes.
+
 	// c.ctx.atomSize won't be bigger than 3, so bitIndex will be no
 	// larger than 23, so power or thresh won't overflow an int32.
 	thresh := int32(1) << (bitIndex - 3)
@@ -53,6 +63,12 @@ func (c *chunk) readAtom() *atom {
 	for cBi := uint(0); cBi < c.ctx.chunkSize; cBi++ {
 		B := c.data[cBi]
 
+		// Bit indexes 0, 1, and 2 are special.  This is because
+		// for these index values, the bits to be selected from
+		// the chunk data are all within a byte.  Above these
+		// bit indexes, we simply select particular *bytes* _en
+		// masse_, but below them, we must select subsets of
+		// bits within the bytes.
 		c.readBitMask(a, 0, 0xaa, B)
 		c.readBitMask(a, 1, 0xcc, B)
 		c.readBitMask(a, 2, 0xf0, B)

@@ -11,6 +11,9 @@ import (
 // errors reading from the carrier io.Reader in Writer.Write.
 var ErrShortCarrier = errors.New("not enough carrier data")
 
+// ErrInsufficientData is returned when the number of bytes to write
+// passed into a Writer.Write call is not a multiple of the atom size
+// being used.
 var ErrInsufficientData = errors.New("data size not a multiple of atom size")
 
 // XOR the bit into the byte slice p given the specified bitIndex.
@@ -71,7 +74,8 @@ func (w *Writer) write(c *chunk) error {
 // written, as well as an error, if one occurred.
 //
 // The number of bytes to write must be a multiple of the atom size
-// being used.
+// being used.  If it is not, ErrInsufficientData will be returned
+// immediately with zero bytes written.
 //
 // Can return ErrShortCarrier if an EOF was encountered before being
 // able to read a sufficient number of bytes from the carrier to embed

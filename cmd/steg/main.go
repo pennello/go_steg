@@ -3,6 +3,8 @@
 // Steg is a command-line interface to the steganographic embedding
 // package steg of which it is a part.
 //
+// The atom size may be specified as 1, 2, or 3.  The default is 1.
+//
 // Input can be provided either as a path, or from the default, standard
 // in.
 //
@@ -31,8 +33,12 @@
 // for use with the size-checking encapsulation format.  Of course, if
 // the input data is small, then this isn't an issue.
 //
+// You are responsible for ensuring that the carrier data is sufficient
+// to embed the input data.
+//
 // Options are:
 //
+//	-atomsize=1: atom size (1, 2, or 3)
 //	-box=false:  use size-checking encapsulation format
 //	-carrier="": path to message carrier
 //	-input="-":  path to input; can be - for standard in

@@ -4,6 +4,8 @@ package steg
 
 import "io"
 
+// A Ctx is a context that encapsulates the desired atom size.  Create
+// atoms, chunks, Readers, Writers, and Muxes from a context.
 type Ctx struct {
 	atomSize  uint // in bytes
 	chunkSize uint // in bytes
@@ -53,6 +55,8 @@ type Mux struct {
 	msg io.Reader
 }
 
+// NewCtx returns a fresh Ctx, ready to create the other types.  Panics
+// if atomSize is not 1, 2, or 3.
 func NewCtx(atomSize uint) *Ctx {
 	if atomSize < 1 {
 		panic("inappropriate atom size")
