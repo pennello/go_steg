@@ -84,6 +84,11 @@ func readChunk(c *chunk, r io.Reader) error {
 // requested amount of data.
 //
 // n == len(p) iff err != nil
+//
+// Note that the current implementation is somewhat naive.  Each chunk
+// is read completely into memory from the underlying source reader.  In
+// particular, for atom size 3, this means that 2MiB at a time will be
+// read into memory.
 func (r *Reader) Read(p []byte) (n int, err error) {
 	c := r.ctx.newChunk()
 	for n < len(p) {

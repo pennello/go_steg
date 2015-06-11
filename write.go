@@ -70,7 +70,8 @@ func (w *Writer) write(c *chunk) error {
 // using data from the carrier io.Reader.  Returns the number of bytes
 // written, as well as an error, if one occurred.
 //
-// TODO Document requirement of len(p) % w.ctx.atomSize.
+// The number of bytes to write must be a multiple of the atom size
+// being used.
 //
 // Can return ErrShortCarrier if an EOF was encountered before being
 // able to read a sufficient number of bytes from the carrier to embed
