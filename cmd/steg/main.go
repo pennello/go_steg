@@ -58,7 +58,7 @@ import (
 	"../../../steg"
 )
 
-type argSpec struct {
+var state struct {
 	ctx         *steg.Ctx
 	carrier     io.Reader
 	carrierSize int64
@@ -94,9 +94,7 @@ func getInput(path string) (input io.Reader, size int64) {
 	return getFile(path)
 }
 
-func getArgs() argSpec {
-	var args argSpec
-
+func init() {
 	atomSizeUsage := "atom size (1, 2, or 3)"
 	atomSize := flag.Uint("atomsize", 1, atomSizeUsage)
 
@@ -118,30 +116,28 @@ func getArgs() argSpec {
 		log.Fatalf("atom size must be 1, 2, or 3")
 	}
 
-	args.ctx = steg.NewCtx(*atomSize)
-	args.carrier, args.carrierSize = getCarrier(*carrier)
-	args.input, args.inputSize = getInput(*input)
-	args.box = *box
-	args.offset = *offset
+	state.ctx = steg.NewCtx(*atomSize)
+	state.carrier, state.carrierSize = getCarrier(*carrier)
+	state.input, state.inputSize = getInput(*input)
+	state.box = *box
+	state.offset = *offset
 
-	if args.offset < 0 {
+	if state.offset < 0 {
 		log.Fatalf("offset must be positive")
 	}
-
-	return args
 }
 
-func extract(args argSpec) {
+func extract() {
 	var err error
-	sr := args.ctx.NewReader(args.input)
-	if args.offset != 0 {
-		err = sr.Discard(args.offset)
+	sr := state.ctx.NewReader(state.input)
+	if state.offset != 0 {
+		err = sr.Discard(state.offset)
 		if err != nil {
 			log.Fatalf("extract error: %v", err)
 		}
 	}
 	r := io.Reader(sr)
-	if args.box {
+	if state.box {
 		r = databox.NewUnmarshaller(r)
 	}
 	_, err = io.Copy(os.Stdout, r)
@@ -155,15 +151,15 @@ func extract(args argSpec) {
 	}
 }
 
-func mux(args argSpec) {
+func mux() {
 	var err error
-	message := args.input
-	if args.box {
-		message = databox.NewMarshaller(args.input, args.inputSize)
+	message := state.input
+	if state.box {
+		message = databox.NewMarshaller(state.input, state.inputSize)
 	}
-	m := args.ctx.NewMux(os.Stdout, args.carrier, message)
-	if args.offset != 0 {
-		_, err = m.CopyN(args.offset)
+	m := state.ctx.NewMux(os.Stdout, state.carrier, message)
+	if state.offset != 0 {
+		_, err = m.CopyN(state.offset)
 		if err != nil {
 			log.Fatalf("mux error: %v", err)
 		}
@@ -177,10 +173,9 @@ func mux(args argSpec) {
 func main() {
 	log.SetFlags(0)
 	log.SetPrefix(fmt.Sprintf("%s: ", os.Args[0]))
-	args := getArgs()
-	if args.carrier == nil {
-		extract(args)
+	if state.carrier == nil {
+		extract()
 	} else {
-		mux(args)
+		mux()
 	}
 }
