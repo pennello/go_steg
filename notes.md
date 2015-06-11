@@ -1,6 +1,6 @@
 Helps to understand how to construct masks.
 
-    func tobin(x uint64) string {
+    func toBinary(x uint64) string {
         s := strconv.FormatUint(x, 2)
         s = strings.Repeat("0", 8 - len(s)) + s
         return s[0:4] + " " + s[4:]
@@ -10,8 +10,8 @@ Helps to understand how to construct masks.
         for byte_index := uint64(0); byte_index < 32; byte_index += 1 {
             low_int := byte_index * 8
             high_int := low_int + 8 - 1
-            low_str := tobin(low_int)
-            high_str := tobin(high_int)
+            low_str := toBinary(low_int)
+            high_str := toBinary(high_int)
             fmt.Printf("%02d %s -> %s\n", byte_index, low_str, high_str)
         }
     }

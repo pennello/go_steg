@@ -1,6 +1,5 @@
 Multi-byte TODO
 ---------------
-- Put bitIndex binary printing code into test.
 - Re-document everything.
 - Discuss mask calculation algorithm.
 - Discuss why bitIndex = 0, 1, 2 are special.
