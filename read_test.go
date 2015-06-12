@@ -31,7 +31,7 @@ func testReadAtomHello2(t *testing.T) {
 	}
 }
 
-func testReadAtomRepeat(t *testing.T, atomSize uint) {
+func testReadAtomRepeat(t *testing.T, atomSize uint8) {
 	ctx := NewCtx(atomSize)
 	c := ctx.newChunk()
 	s := string(mathrand.Intn(256))
@@ -51,7 +51,7 @@ func TestReadAtom(t *testing.T) {
 	testReadAtomRepeat(t, 2)
 }
 
-func testReadChunkHello(t *testing.T, atomSize uint) {
+func testReadChunkHello(t *testing.T, atomSize uint8) {
 	const repeat = 3
 	ctx := NewCtx(atomSize)
 	hc := testHelloChunk(atomSize)
@@ -69,7 +69,7 @@ func testReadChunkHello(t *testing.T, atomSize uint) {
 	}
 }
 
-func testReadChunkShortRead(t *testing.T, atomSize uint) {
+func testReadChunkShortRead(t *testing.T, atomSize uint8) {
 	ctx := NewCtx(atomSize)
 	r := bytes.NewReader(testHelloChunk(atomSize).data[:ctx.chunkSize*2/3])
 	c := ctx.newChunk()
@@ -132,7 +132,7 @@ func testReaderLorem(t *testing.T) {
 	}
 }
 
-func testReaderShortRead1(t *testing.T, atomSize uint) {
+func testReaderShortRead1(t *testing.T, atomSize uint8) {
 	const repeat = 3
 	ctx := NewCtx(atomSize)
 	s := string(testHelloChunk(atomSize).data)
@@ -151,7 +151,7 @@ func testReaderShortRead1(t *testing.T, atomSize uint) {
 	}
 }
 
-func testReaderShortRead2(t *testing.T, atomSize uint) {
+func testReaderShortRead2(t *testing.T, atomSize uint8) {
 	const repeat = 2
 	ctx := NewCtx(atomSize)
 	s := string(testHelloChunk(atomSize).data)
@@ -182,14 +182,14 @@ func TestReader(t *testing.T) {
 func testAsUint(t *testing.T, a *atom) {
 	p := make([]byte, 4)
 	copy(p, a.data)
-	out := a.asUint()
-	expect := uint(binary.LittleEndian.Uint32(p))
+	out := a.asUint32()
+	expect := binary.LittleEndian.Uint32(p)
 	if out != expect {
 		t.Errorf("(%v).asUint() != %v (was %v)", a.data, expect, out)
 	}
 }
 
-func testAsUintCtx(t *testing.T, atomSize uint) {
+func testAsUintCtx(t *testing.T, atomSize uint8) {
 	ctx := NewCtx(atomSize)
 	for i := 0; i < 1000; i++ {
 		a := ctx.newAtom()

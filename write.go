@@ -16,26 +16,28 @@ var ErrShortCarrier = errors.New("not enough carrier data")
 // being used.
 var ErrInsufficientData = errors.New("data size not a multiple of atom size")
 
-// XOR the bit into the byte slice p given the specified bitIndex.
-func xorBit(p []byte, bit uint8, bitIndex uint) {
-	// The bits in bitIndex above 3 tell us in which slice byte to
-	// xor the bit, and the low 3 bits tell us which bit in that
-	// byte this is for.
-	Bi := bitIndex >> 3   // byte index
-	bsi := bitIndex & 0x7 // bit sub-index
+// XOR the bit into the byte slice p given the specified bit index bi.
+// Atom size is at most 3, so chunk size is at most 2Mi, so a chunk
+// bit index can be at most 16Mi - 1, so bi will fit in a uint32.
+func xorBit(p []byte, bit uint8, bi uint32) {
+	// The bits in bi above 3 tell us in which slice byte to xor the
+	// bit, and the low 3 bits tell us which bit in that byte this
+	// is for.
+	Bi := bi >> 3   // byte index
+	bsi := bi & 0x7 // bit sub-index
 	// XOR the bit.
 	p[Bi] ^= bit << bsi
 	// Done!
-
 }
 
-func (a *atom) xorBit(bit uint8, bitIndex uint) {
-	xorBit(a.data, bit, bitIndex)
+// xorBit xors the given bit at the given atom bit index.
+func (a *atom) xorBit(bit uint8, abi uint8) {
+	xorBit(a.data, bit, uint32(abi))
 }
 
 // In-place xor of a with b.  Alters a.
 func (a *atom) xor(b *atom) {
-	for i := uint(0); i < a.ctx.atomSize; i++ {
+	for i := uint8(0); i < a.ctx.atomSize; i++ {
 		a.data[i] ^= b.data[i]
 	}
 }
@@ -49,15 +51,16 @@ func (a *atom) zero(off int) {
 
 // Copy data into a.data.
 func (a *atom) copy(data []byte) {
-	if uint(len(data)) != a.ctx.atomSize {
+	if len(data) != int(a.ctx.atomSize) {
 		panic("mis-matched atom copy")
 	}
 	copy(a.data, data)
 }
 
+// write writes the atom into the chunk.
 func (c *chunk) write(a *atom) {
 	// Compare current value with what we need to write.
-	x := c.readAtom().asUint() ^ a.asUint()
+	x := c.readAtom().asUint32() ^ a.asUint32()
 	// x is now a bit index to which bit in c we need to flip.
 	xorBit(c.data, 1, x)
 }
@@ -86,7 +89,7 @@ func (w *Writer) write(c *chunk) error {
 //
 // n == len(p) iff err != nil
 func (w *Writer) Write(p []byte) (n int, err error) {
-	if uint(len(p))%w.ctx.atomSize != 0 {
+	if len(p)%int(w.ctx.atomSize) != 0 {
 		return 0, ErrInsufficientData
 	}
 	c := w.ctx.newChunk()

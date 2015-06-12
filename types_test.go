@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-func testNewCtxPanic(t *testing.T, atomSize uint) {
+func testNewCtxPanic(t *testing.T, atomSize uint8) {
 	defer func() {
 		if r := recover(); r == nil {
 			t.Error(r)
@@ -16,10 +16,10 @@ func testNewCtxPanic(t *testing.T, atomSize uint) {
 	NewCtx(atomSize)
 }
 
-func testNewCtx(t *testing.T, atomSize uint) {
+func testNewCtx(t *testing.T, atomSize uint8) {
 	ctx := NewCtx(atomSize)
 	a := ctx.newAtom()
-	if atomSize != uint(len(a.data)) {
+	if int(atomSize) != len(a.data) {
 		t.Fail()
 	}
 	expect := int(math.Pow(2, float64(atomSize*8)) / 8)

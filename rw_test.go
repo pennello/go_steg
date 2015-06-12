@@ -54,14 +54,14 @@ func TestReadWriteAtom(t *testing.T) {
 	}
 }
 
-func testReaderWriter(t *testing.T, secret []byte, atomSize uint) {
+func testReaderWriter(t *testing.T, secret []byte, atomSize uint8) {
 	ctx := NewCtx(atomSize)
 
 	var n int
 	var err error
 
 	// First, do write and test.
-	carrierBytes := make([]byte, uint(len(secret))/ctx.atomSize*ctx.chunkSize+19)
+	carrierBytes := make([]byte, len(secret)/int(ctx.atomSize)*int(ctx.chunkSize)+19)
 	_, err = cryptorand.Read(carrierBytes)
 	if err != nil {
 		t.Errorf("failed to read random carrier bytes %v", err)
@@ -98,11 +98,11 @@ func testReaderWriter(t *testing.T, secret []byte, atomSize uint) {
 	}
 }
 
-func testReaderWriterRandom(t *testing.T, atomSize uint) {
-	length := uint(mathrand.Intn(32))
-	rem := length % atomSize
+func testReaderWriterRandom(t *testing.T, atomSize uint8) {
+	length := mathrand.Intn(32)
+	rem := length % int(atomSize)
 	if rem != 0 {
-		length += atomSize - rem
+		length += int(atomSize) - rem
 	}
 	secret := make([]byte, length)
 	_, err := cryptorand.Read(secret)

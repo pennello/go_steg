@@ -7,8 +7,14 @@ import "io"
 // A Ctx is a context that encapsulates the desired atom size.  Create
 // atoms, chunks, Readers, Writers, and Muxes from a context.
 type Ctx struct {
-	atomSize  uint // in bytes
-	chunkSize uint // in bytes
+	// Atom size at most 3, so it will fit in a uint8.
+	atomSize uint8 // in bytes
+	// Chunk size at most 2Mi, so it will fit in a uint32.
+	chunkSize uint32 // in bytes
+	// In general, it's safe to cast either of these to an int.
+
+	// Even a chunk bit index will be at most 2Mi * 8 - 1 =
+	// 16Mi - 1, which will fit in a uint32.
 }
 
 type atom struct {
@@ -32,7 +38,7 @@ type Reader struct {
 	cur *atom
 	// Remaining bytes before the current atom is exhausted and we
 	// need to get another one.
-	cn uint
+	cn int
 }
 
 // A Writer enables you to write steganographically-embedded bytes into
@@ -57,16 +63,18 @@ type Mux struct {
 
 // NewCtx returns a fresh Ctx, ready to create the other types.  Panics
 // if atomSize is not 1, 2, or 3.
-func NewCtx(atomSize uint) *Ctx {
+func NewCtx(atomSize uint8) *Ctx {
 	if atomSize < 1 {
 		panic("inappropriate atom size")
 	}
+	// NB: atomSize <= 3 depended on elsewhere in the code for type
+	// safety.
 	if atomSize > 3 {
 		// See the chunk.ReadBit implementation.
 		panic("unsupported atom size")
 	}
 	// (2 ^ (atomSize * 8)) / 8
-	chunkSize := uint(1) << (atomSize*8 - 3)
+	chunkSize := uint32(1) << (atomSize*8 - 3)
 	return &Ctx{atomSize: atomSize, chunkSize: chunkSize}
 }
 

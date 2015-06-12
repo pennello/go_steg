@@ -16,7 +16,7 @@ const helloString = "hello, there, how are you? fine."
 // The byte embedded in the above string.
 const helloByte = 0xdb
 
-func testHelloChunk(atomSize uint) *chunk {
+func testHelloChunk(atomSize uint8) *chunk {
 	ctx := NewCtx(atomSize)
 	c := ctx.newChunk()
 	n := len(c.data) / len(helloString)

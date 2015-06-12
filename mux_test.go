@@ -10,7 +10,7 @@ import (
 	mathrand "math/rand"
 )
 
-func testMuxPad(t *testing.T, atomSize uint) {
+func testMuxPad(t *testing.T, atomSize uint8) {
 	ctx := NewCtx(atomSize)
 
 	msgLen := mathrand.Intn(4) + 1
@@ -19,7 +19,7 @@ func testMuxPad(t *testing.T, atomSize uint) {
 		t.Error(err)
 	}
 	msg := bytes.NewBuffer(msgBytes)
-	carrierLen := uint(msgLen) / ctx.atomSize * ctx.chunkSize
+	carrierLen := msgLen / int(ctx.atomSize) * int(ctx.chunkSize)
 	carrierBytes := make([]byte, carrierLen)
 	if _, err := cryptorand.Read(carrierBytes); err != nil {
 		t.Error(err)

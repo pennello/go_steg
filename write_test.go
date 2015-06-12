@@ -13,7 +13,7 @@ import (
 	"chrispennello.com/go/swar"
 )
 
-func testXorBit(t *testing.T, p []byte, bit uint8, bitIndex uint, expect []byte) {
+func testXorBit(t *testing.T, p []byte, bit uint8, bitIndex uint32, expect []byte) {
 	xorBit(p, bit, bitIndex)
 	if !bytes.Equal(p, expect) {
 		t.Fail()
@@ -28,7 +28,7 @@ func TestXorBit(t *testing.T) {
 	testXorBit(t, []byte{0, 0, 0x80}, 1, 23, []byte{0, 0, 0})
 }
 
-func testAtomXorBit(t *testing.T, atomSize uint, bit uint8, bitIndex uint, expect []byte) {
+func testAtomXorBit(t *testing.T, atomSize uint8, bit uint8, bitIndex uint8, expect []byte) {
 	ctx := NewCtx(atomSize)
 	a := ctx.newAtom()
 	a.xorBit(bit, bitIndex)
@@ -38,7 +38,7 @@ func testAtomXorBit(t *testing.T, atomSize uint, bit uint8, bitIndex uint, expec
 }
 
 func TestAtomXorBit(t *testing.T) {
-	var atomSize uint
+	var atomSize uint8
 	var e []byte
 
 	atomSize = 3
@@ -57,7 +57,7 @@ func testChunkDiff(t *testing.T, a, b *chunk) {
 		panic("chunks with different contexts")
 	}
 	bitsDiff := 0
-	for i := uint(0); i < a.ctx.chunkSize; i++ {
+	for i := uint32(0); i < a.ctx.chunkSize; i++ {
 		bitsDiff += int(swar.Ones8(a.data[i] ^ b.data[i]))
 	}
 	if bitsDiff != 1 {
@@ -174,14 +174,14 @@ func testWriterLoremExtra(t *testing.T, extra int) {
 	testBytesDiff(t, carrierBytes, dst.Bytes(), len(testBytes)/2)
 }
 
-func testWriterRandom(t *testing.T, atomSize uint) {
+func testWriterRandom(t *testing.T, atomSize uint8) {
 	ctx := NewCtx(atomSize)
 	var n int
 	var err error
-	nTestBytes := uint(mathrand.Intn(10) + 1)
-	rem := nTestBytes % atomSize
+	nTestBytes := mathrand.Intn(10) + 1
+	rem := nTestBytes % int(atomSize)
 	if rem != 0 {
-		nTestBytes += atomSize - nTestBytes
+		nTestBytes += int(atomSize) - nTestBytes
 	}
 	testBytes := make([]byte, nTestBytes)
 	testSize := len(testBytes) * int(3*ctx.chunkSize/2)
@@ -211,17 +211,17 @@ func testWriterRandom(t *testing.T, atomSize uint) {
 	testBytesDiff(t, carrierBytes, dst.Bytes(), len(testBytes)/int(atomSize))
 }
 
-func testWriterShortReadRandom(t *testing.T, atomSize uint) {
+func testWriterShortReadRandom(t *testing.T, atomSize uint8) {
 	ctx := NewCtx(atomSize)
 	var n int
 	var err error
-	nTestBytes := uint(mathrand.Intn(10) + 1)
-	rem := nTestBytes % atomSize
+	nTestBytes := mathrand.Intn(10) + 1
+	rem := nTestBytes % int(atomSize)
 	if rem != 0 {
-		nTestBytes += atomSize - nTestBytes
+		nTestBytes += int(atomSize) - nTestBytes
 	}
 	testBytes := make([]byte, nTestBytes)
-	testSize := uint(len(testBytes) / int(atomSize) * int(2*ctx.chunkSize/3))
+	testSize := len(testBytes) / int(atomSize) * int(2*ctx.chunkSize/3)
 	dst := new(bytes.Buffer)
 	carrierBytes := make([]byte, testSize)
 	_, err = cryptorand.Read(carrierBytes)
@@ -236,7 +236,7 @@ func testWriterShortReadRandom(t *testing.T, atomSize uint) {
 		return
 	}
 	w := ctx.NewWriter(dst, carrier)
-	expect := testSize / ctx.chunkSize
+	expect := testSize / int(ctx.chunkSize)
 	n, err = w.Write(testBytes)
 	if n == len(testBytes) {
 		t.Errorf("wrote too much; n = %v (expected %v)", n, expect)

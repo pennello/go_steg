@@ -14,15 +14,18 @@ import (
 // is encountered before being able to read sufficient data.
 var ErrShortRead = errors.New("short read")
 
-func (a *atom) asUint() uint {
-	r := uint(0)
-	for i := uint(0); i < a.ctx.atomSize; i++ {
-		r |= uint(a.data[i]) << (i * 8)
+func (a *atom) asUint32() uint32 {
+	r := uint32(0)
+	for i := uint8(0); i < uint8(a.ctx.atomSize); i++ {
+		r |= uint32(a.data[i]) << (i * 8)
 	}
 	return r
 }
 
-func (c *chunk) readBitMask(a *atom, bitIndex uint, mask byte, B byte) {
+// readBitMask xors the bits specified out of the byte B by applying the
+// mask and then stores the value in the atom a the specified atom bit
+// index abi.
+func (c *chunk) readBitMask(a *atom, abi uint8, mask byte, B byte) {
 	// First, extract the desired bits from the chunk byte by using
 	// the mask.
 	x := mask & B
@@ -32,35 +35,39 @@ func (c *chunk) readBitMask(a *atom, bitIndex uint, mask byte, B byte) {
 	// then examining the parity.  If even, then 0; if odd, then 1.
 	x = swar.Ones8(x) % 2
 	// XOR the bit into the atom.
-	a.xorBit(x, bitIndex)
+	a.xorBit(x, abi)
 	// Done!
 }
 
-func (c *chunk) readBit(a *atom, bitIndex uint, cBi uint, B byte) {
+// readBit xors the bits specified out of the byte B by computing a mask
+// and invoking readBitMask.
+func (c *chunk) readBit(a *atom, abi uint8, cBi uint32, B byte) {
 	// We compute the power of two threshold for this bit index.  If
 	// the byte index is above this value (mod power), then we will
 	// include these bytes in the xor for this bit.  If it's below,
 	// then we will not.  This is expressed as using a mask of
 	// either 0xff (for inclusion) or 0x00 (for exclusion).  This
-	// threshold exponentially increases with each bitIndex until
-	// ultimately we are excluding the entirety of the bottom half
-	// of the bytes and including the entirety of the top half.  See
-	// the table in the notes.
+	// threshold exponentially increases with each atom bit index
+	// abi until ultimately we are excluding the entirety of the
+	// bottom half of the bytes and including the entirety of the
+	// top half.  See the table in the notes.
 
-	// c.ctx.atomSize won't be bigger than 3, so bitIndex will be no
+	// c.ctx.atomSize won't be bigger than 3, so abi will be no
 	// larger than 23, so power or thresh won't overflow an int32.
-	thresh := int32(1) << (bitIndex - 3)
+	thresh := int32(1) << (uint8(abi) - 3)
 	power := thresh << 1
+	// c.ctx.atomSize won't be bigger than 3, so cBi will be less
+	// than 2Mi., so cBi won't overflow an int32.
 	value := int32(cBi) % power
 	mask := byte(swar.IntegerSelect32(value, thresh, 0x00, 0xff))
-	c.readBitMask(a, bitIndex, mask, B)
+	c.readBitMask(a, abi, mask, B)
 }
 
 func (c *chunk) readAtom() *atom {
 	a := c.ctx.newAtom()
-	bits := c.ctx.atomSize * 8
+	atomBits := c.ctx.atomSize * 8
 	// cBi: chunk byte index
-	for cBi := uint(0); cBi < c.ctx.chunkSize; cBi++ {
+	for cBi := uint32(0); cBi < c.ctx.chunkSize; cBi++ {
 		B := c.data[cBi]
 
 		// Bit indexes 0, 1, and 2 are special.  This is because
@@ -73,8 +80,9 @@ func (c *chunk) readAtom() *atom {
 		c.readBitMask(a, 1, 0xcc, B)
 		c.readBitMask(a, 2, 0xf0, B)
 
-		for bitIndex := uint(3); bitIndex < bits; bitIndex++ {
-			c.readBit(a, bitIndex, cBi, B)
+		// abi: atom bit index
+		for abi := uint8(3); abi < atomBits; abi++ {
+			c.readBit(a, abi, cBi, B)
 		}
 	}
 	return a
@@ -114,11 +122,11 @@ func (r *Reader) Read(p []byte) (n int, err error) {
 				return n, err
 			}
 			r.cur = c.readAtom()
-			r.cn = c.ctx.atomSize
+			r.cn = int(c.ctx.atomSize)
 		}
-		nn := copy(p[n:], r.cur.data[c.ctx.atomSize-r.cn:])
+		nn := copy(p[n:], r.cur.data[int(c.ctx.atomSize)-r.cn:])
 		n += nn
-		r.cn -= uint(nn)
+		r.cn -= nn
 		if r.cn == 0 {
 			r.cur = nil
 		}
