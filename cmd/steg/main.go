@@ -36,9 +36,10 @@
 // for use with the size-checking encapsulation format.  Of course, if
 // the input data is small, then this isn't an issue.
 //
-// When embedding, steg will check the effective input data size against
-// the capacity of the effective carrier size.  If it's insufficient,
-// steg will error out early with an informative message.
+// When embedding input data from a file, steg will check the effective
+// input data size against the capacity of the effective carrier size.
+// If it's insufficient, steg will error out early with an informative
+// message.
 //
 // Options are:
 //
@@ -156,7 +157,7 @@ func extract() {
 }
 
 func mux() {
-	var err error
+	stdin := state.inputSize == -1
 	inputSize := state.inputSize
 	carrierSize := state.carrierSize
 	message := state.input
@@ -166,17 +167,17 @@ func mux() {
 	}
 	m := state.ctx.NewMux(os.Stdout, state.carrier, message)
 	if state.offset != 0 {
-		_, err = m.CopyN(state.offset)
+		_, err := m.CopyN(state.offset)
 		if err != nil {
 			log.Fatalf("mux error: %v", err)
 		}
 		carrierSize -= state.offset
 	}
 	capacity := state.ctx.Capacity(carrierSize)
-	if capacity < inputSize {
+	if !stdin && capacity < inputSize {
 		log.Fatalf("mux error: input size %v > capacity %v", inputSize, capacity)
 	}
-	err = m.Mux()
+	err := m.Mux()
 	if err != nil {
 		log.Fatalf("mux error: %v", err)
 	}
