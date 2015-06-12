@@ -101,7 +101,7 @@ func (ctx *Ctx) NewWriter(dst io.Writer, carrier io.Reader) *Writer {
 
 // NewMux returns a fresh Mux, ready to multiplex a message on a carrier
 // into a destination.
-func (ctx *Ctx) NewMux(dst io.Writer, carrier, msg io.Reader) Mux {
+func (ctx *Ctx) NewMux(dst io.Writer, carrier, msg io.Reader) *Mux {
 	w := ctx.NewWriter(dst, carrier)
-	return Mux{ctx: ctx, w: w, msg: msg}
+	return &Mux{ctx: ctx, w: w, msg: msg}
 }

@@ -20,7 +20,7 @@ import "io"
 // bytes and embedded into the carrier.
 //
 // Successful iff err != nil.
-func (m Mux) Mux() (err error) {
+func (m *Mux) Mux() (err error) {
 	// Would be nice if we could just call io.Copy, but the buffer
 	// size isn't ensured to be a multiple of the atom size.
 
@@ -66,6 +66,6 @@ func (m Mux) Mux() (err error) {
 // embedding your data.
 //
 // Counterpart to Reader.Discard.
-func (m Mux) CopyN(n int64) (written int64, err error) {
+func (m *Mux) CopyN(n int64) (written int64, err error) {
 	return m.w.CopyN(n)
 }
