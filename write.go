@@ -16,9 +16,9 @@ var ErrShortCarrier = errors.New("not enough carrier data")
 // being used.
 var ErrInsufficientData = errors.New("data size not a multiple of atom size")
 
-// XOR the bit into the byte slice p given the specified bit index bi.
-// Atom size is at most 3, so chunk size is at most 2Mi, so a chunk
-// bit index can be at most 16Mi - 1, so bi will fit in a uint32.
+// xorBit XORs the bit into the byte slice p given the specified bit
+// index bi.  Atom size is at most 3, so chunk size is at most 2Mi, so a
+// chunk bit index can be at most 16Mi - 1, so bi will fit in a uint32.
 func xorBit(p []byte, bit uint8, bi uint32) {
 	// The bits in bi above 3 tell us in which slice byte to xor the
 	// bit, and the low 3 bits tell us which bit in that byte this
@@ -35,21 +35,22 @@ func (a *atom) xorBit(bit uint8, abi uint8) {
 	xorBit(a.data, bit, uint32(abi))
 }
 
-// In-place xor of a with b.  Alters a.
+// xor performs an in-place xor of a with b.  Alters a.
 func (a *atom) xor(b *atom) {
 	for i := uint8(0); i < a.ctx.atomSize; i++ {
 		a.data[i] ^= b.data[i]
 	}
 }
 
-// Zero out the bytes in the atom's data starting at the given offset.
+// zero zeroes out the bytes in the atom's data starting at the given
+// offset.
 func (a *atom) zero(off int) {
 	for ; off < int(a.ctx.atomSize); off++ {
 		a.data[off] = 0
 	}
 }
 
-// Copy data into a.data.
+// copy copies the given data into a.data.
 func (a *atom) copy(data []byte) {
 	if len(data) != int(a.ctx.atomSize) {
 		panic("mis-matched atom copy")
@@ -65,7 +66,7 @@ func (c *chunk) write(a *atom) {
 	xorBit(c.data, 1, x)
 }
 
-// Write chunk into destination io.Reader.
+// write writes chunk into destination io.Reader.
 func (w *Writer) write(c *chunk) error {
 	// XXX Can io.Writer.Write return an error even if n = len(p)?
 	_, err := w.dst.Write(c.data)
