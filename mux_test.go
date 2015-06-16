@@ -19,7 +19,7 @@ func testMuxPad(t *testing.T, atomSize uint8) {
 		t.Error(err)
 	}
 	msg := bytes.NewBuffer(msgBytes)
-	carrierLen := msgLen / int(ctx.atomSize) * int(ctx.chunkSize)
+	carrierLen := (msgLen/int(ctx.atomSize) + 1) * int(ctx.chunkSize)
 	carrierBytes := make([]byte, carrierLen)
 	if _, err := cryptorand.Read(carrierBytes); err != nil {
 		t.Error(err)

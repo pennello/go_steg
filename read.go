@@ -23,8 +23,8 @@ func (a *atom) asUint32() uint32 {
 }
 
 // readBitMask xors the bits specified out of the byte B by applying the
-// mask and then stores the value in the atom a the specified atom bit
-// index abi.
+// mask and then stores the value in the atom a at the specified atom
+// bit index abi.
 func (c *chunk) readBitMask(a *atom, abi uint8, mask byte, B byte) {
 	// First, extract the desired bits from the chunk byte by using
 	// the mask.
@@ -63,6 +63,7 @@ func (c *chunk) readBit(a *atom, abi uint8, cBi uint32, B byte) {
 	c.readBitMask(a, abi, mask, B)
 }
 
+// readAtom creates a new atom and reads its contents out of the chunk.
 func (c *chunk) readAtom() *atom {
 	a := c.ctx.newAtom()
 	atomBits := c.ctx.atomSize * 8
@@ -88,17 +89,6 @@ func (c *chunk) readAtom() *atom {
 	return a
 }
 
-// Read into a chunk from an io.Reader.  If there is an error reading,
-// even after completely reading the chunk, that error is returned.
-// Returns an error iff the chunk was not completely read.
-func readChunk(c *chunk, r io.Reader) error {
-	_, err := io.ReadFull(r, c.data)
-	if err == io.EOF || err == io.ErrUnexpectedEOF {
-		err = ErrShortRead
-	}
-	return err
-}
-
 // Read steganographically-embedded bytes from the underlying source
 // io.Reader.  Returns the number of bytes read as well as an error, if
 // one occurred.
@@ -109,15 +99,15 @@ func readChunk(c *chunk, r io.Reader) error {
 //
 // n == len(p) iff err != nil
 //
-// Note that the current implementation is somewhat naive.  Each chunk
-// is read completely into memory from the underlying source reader.  In
+// The current implementation is somewhat naive.  Each chunk is read
+// completely into memory from the underlying source reader.  In
 // particular, for atom size 3, this means that 2MiB at a time will be
 // read into memory.
 func (r *Reader) Read(p []byte) (n int, err error) {
 	c := r.ctx.newChunk()
 	for n < len(p) {
 		if r.cur == nil {
-			err := readChunk(c, r.src)
+			_, err = io.ReadFull(r.src, c.data)
 			if err != nil {
 				return n, err
 			}

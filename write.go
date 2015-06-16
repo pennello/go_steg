@@ -93,23 +93,23 @@ func (w *Writer) Write(p []byte) (n int, err error) {
 		return 0, ErrInsufficientData
 	}
 	c := w.ctx.newChunk()
+	a := w.ctx.newAtom()
 	for n < len(p) {
-		err = readChunk(c, w.carrier)
+		_, err = io.ReadFull(w.carrier, c.data)
 		if err != nil {
-			if err == ErrShortRead {
+			if err == io.EOF || err == io.ErrUnexpectedEOF {
 				err = ErrShortCarrier
 			}
 			return n, err
 		}
-		a := w.ctx.newAtom()
 		a.copy(p[n : n+int(w.ctx.atomSize)])
 		c.write(a)
 		err = w.write(c)
 		if err != nil {
 			// We may have written _some_ of the bytes of c,
 			// but won't have written all of them.  We
-			// consider this to be a _not_ having been
-			// written, so n remains unincremented.
+			// consider this to be the atom _not_ having
+			// been written, so n remains unincremented.
 			return n, err
 		}
 		n += int(w.ctx.atomSize)

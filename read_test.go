@@ -51,41 +51,6 @@ func TestReadAtom(t *testing.T) {
 	testReadAtomRepeat(t, 2)
 }
 
-func testReadChunkHello(t *testing.T, atomSize uint8) {
-	const repeat = 3
-	ctx := NewCtx(atomSize)
-	hc := testHelloChunk(atomSize)
-	s := strings.Repeat(string(hc.data), repeat)
-	r := bytes.NewReader([]byte(s))
-	c := ctx.newChunk()
-	err := readChunk(c, r)
-	if err != nil {
-		t.Errorf("read error %v", err)
-		return
-	}
-	ref := testHelloChunk(atomSize)
-	if !bytes.Equal(c.data, ref.data) {
-		t.Errorf("didn't read hello back, got %#v", string(c.data))
-	}
-}
-
-func testReadChunkShortRead(t *testing.T, atomSize uint8) {
-	ctx := NewCtx(atomSize)
-	r := bytes.NewReader(testHelloChunk(atomSize).data[:ctx.chunkSize*2/3])
-	c := ctx.newChunk()
-	err := readChunk(c, r)
-	if err == nil {
-		t.Errorf("no error, c = %#v", string(c.data))
-	}
-}
-
-func TestReadChunk(t *testing.T) {
-	testReadChunkHello(t, 1)
-	testReadChunkHello(t, 2)
-	testReadChunkShortRead(t, 1)
-	testReadChunkShortRead(t, 2)
-}
-
 func testReaderHello(t *testing.T) {
 	const repeat = 3
 	const atomSize = 1

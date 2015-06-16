@@ -35,20 +35,19 @@ func (m *Mux) Mux() (err error) {
 		n, err = io.ReadFull(m.msg, a.data)
 		if err != nil {
 			if err == io.EOF {
-				// We're all done reading from
-				// the message reader.
+				// We're all done reading from the
+				// message reader.
 				break
 			}
-			if err == io.ErrUnexpectedEOF {
-				// That's ok, we read some of the bytes.
-				// Zero out the remaining, though, as
-				// they might have been used for
-				// scratch, or contain data from the
-				// previous read.
-				a.zero(n)
-				break
+			if err != io.ErrUnexpectedEOF {
+				return err
 			}
-			return err
+			// We only read some of the bytes, but that's
+			// ok.  We zero out the remaining, as they might
+			// have been used for scratch, or contain data
+			// from the previous read.  The next read will
+			// EOF, and we'll be done.
+			a.zero(n)
 		}
 		_, err = m.w.Write(a.data)
 		if err != nil {
