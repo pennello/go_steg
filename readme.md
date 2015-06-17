@@ -22,6 +22,6 @@ carrier bytes.
 
 This yields the following throughput statistics.
 
-    1 byte per atom     4.387MB/s
+    1 byte  per atom    4.387MB/s
     2 bytes per atom    1.999MB/s
     3 bytes per atom    1.725MB/s
