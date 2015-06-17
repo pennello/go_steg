@@ -1,6 +1,5 @@
 TODO
 ----
-- write package godoc documentation
 - web tool
 
 I/O Throughput
