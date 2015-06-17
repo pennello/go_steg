@@ -52,8 +52,8 @@ type Writer struct {
 }
 
 // Mux multiplexes a message on a carrier into a destination.  It
-// steganographically embeds data from the message into the carrier and
-// then writes the modified data into the destination.
+// steganographically embeds data from the message into the carrier data
+// and then writes the modified data into the destination.
 type Mux struct {
 	ctx *Ctx
 

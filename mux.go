@@ -4,7 +4,7 @@ package steg
 
 import "io"
 
-// Mux reads, one byte at a time, from the message reader,
+// Mux reads, one atom at a time, from the message reader,
 // steganographically embeds its data into the data read from the
 // carrier, and then writes the resultant data into the destination
 // writer.  If the carrier has more than enough data for the message,
@@ -16,8 +16,8 @@ import "io"
 // writes.
 //
 // If the reader does not contain sufficient data to read an integral
-// number of atoms the final partial atom read will be padded with zero
-// bytes and embedded into the carrier.
+// number of atoms, then the final partial atom read will be padded with
+// zero bytes and embedded into the carrier.
 //
 // Successful iff err != nil.
 func (m *Mux) Mux() (err error) {

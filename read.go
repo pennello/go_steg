@@ -89,9 +89,9 @@ func (c *chunk) readAtom() *atom {
 	return a
 }
 
-// Read steganographically-embedded bytes from the underlying source
-// io.Reader.  Returns the number of bytes read as well as an error, if
-// one occurred.
+// Read reads steganographically-embedded bytes from the underlying
+// source io.Reader.  Returns the number of bytes read as well as an
+// error, if one occurred.
 //
 // Can return io.EOF or io.ErrUnexpectedEOF if an EOF was encountered
 // before being able to read a sufficient number of bytes to extract the
