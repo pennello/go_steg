@@ -1,6 +1,7 @@
 TODO
 ----
 - web tool
+- make readme acceptable for public consumption
 
 I/O Throughput
 --------------
