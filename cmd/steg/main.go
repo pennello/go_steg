@@ -120,15 +120,15 @@ func init() {
 		log.Fatalf("atom size must be 1, 2, or 3")
 	}
 
+	if *offset < 0 {
+		log.Fatalf("offset must be positive")
+	}
+
 	state.ctx = steg.NewCtx(uint8(*atomSize))
 	state.carrier, state.carrierSize = getCarrier(*carrier)
 	state.input, state.inputSize = getInput(*input)
 	state.box = *box
 	state.offset = *offset
-
-	if state.offset < 0 {
-		log.Fatalf("offset must be positive")
-	}
 }
 
 func extract() {
