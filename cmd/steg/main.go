@@ -58,9 +58,8 @@ import (
 	"log"
 	"os"
 
+	"chrispennello.com/go/steg"
 	"chrispennello.com/go/util/databox"
-
-	"../../../steg"
 )
 
 var state struct {
