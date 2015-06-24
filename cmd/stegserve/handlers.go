@@ -16,6 +16,10 @@ func errorResponse(w http.ResponseWriter, status int, err error) {
 	if err != nil {
 		log.Print(err)
 	}
+	err = w.Close()
+	if err != nil {
+		log.Print(err)
+	}
 }
 
 func mux(w http.ResponseWriter, r *http.Request) {
