@@ -1,4 +1,4 @@
-// chris 0622315
+// chris 0622315 HTTP header argument parsing.
 
 package main
 
