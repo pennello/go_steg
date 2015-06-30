@@ -59,18 +59,10 @@ import (
 	"os"
 
 	"chrispennello.com/go/steg"
-	"chrispennello.com/go/util/databox"
+	"chrispennello.com/go/steg/cmd"
 )
 
-var state struct {
-	ctx         *steg.Ctx
-	carrier     io.Reader
-	carrierSize int64
-	input       io.Reader
-	inputSize   int64
-	box         bool
-	offset      int64
-}
+var state *cmd.State
 
 func getFile(path string) (f *os.File, size int64) {
 	f, err := os.Open(path)
@@ -124,70 +116,20 @@ func init() {
 		log.Fatalf("offset must be positive")
 	}
 
-	state.ctx = steg.NewCtx(uint8(*atomSize))
-	state.carrier, state.carrierSize = getCarrier(*carrier)
-	state.input, state.inputSize = getInput(*input)
-	state.box = *box
-	state.offset = *offset
-}
-
-func extract() {
-	var err error
-	sr := state.ctx.NewReader(state.input)
-	if state.offset != 0 {
-		err = sr.Discard(state.offset)
-		if err != nil {
-			log.Fatalf("extract error: %v", err)
-		}
-	}
-	r := io.Reader(sr)
-	if state.box {
-		r = databox.NewUnmarshaller(r)
-	}
-	_, err = io.Copy(os.Stdout, r)
-	if err == steg.ErrShortRead {
-		// Short reads are ok on extract.  We just got the end
-		// of the file!
-		err = nil
-	}
-	if err != nil {
-		log.Fatalf("extract error: %v", err)
-	}
-}
-
-func mux() {
-	stdin := state.inputSize == -1
-	inputSize := state.inputSize
-	carrierSize := state.carrierSize
-	message := state.input
-	if state.box {
-		message = databox.NewMarshaller(state.input, state.inputSize)
-		inputSize += databox.HeaderSize
-	}
-	m := state.ctx.NewMux(os.Stdout, state.carrier, message)
-	if state.offset != 0 {
-		_, err := m.CopyN(state.offset)
-		if err != nil {
-			log.Fatalf("mux error: %v", err)
-		}
-		carrierSize -= state.offset
-	}
-	capacity := state.ctx.Capacity(carrierSize)
-	if !stdin && capacity < inputSize {
-		log.Fatalf("mux error: input size %v > capacity %v", inputSize, capacity)
-	}
-	err := m.Mux()
-	if err != nil {
-		log.Fatalf("mux error: %v", err)
-	}
+	state = new(cmd.State)
+	state.Ctx = steg.NewCtx(uint8(*atomSize))
+	state.Carrier, state.CarrierSize = getCarrier(*carrier)
+	state.Input, state.InputSize = getInput(*input)
+	state.Box = *box
+	state.Offset = *offset
 }
 
 func main() {
 	log.SetFlags(0)
 	log.SetPrefix(fmt.Sprintf("%s: ", os.Args[0]))
-	if state.carrier == nil {
-		extract()
-	} else {
-		mux()
+	err := cmd.Main(os.Stdout, state)
+	if err != nil {
+		log.Print(err)
+		os.Exit(1)
 	}
 }
