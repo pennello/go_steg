@@ -1,5 +1,6 @@
-// chris 062915 Common code for commands.
+// chris 062915
 
+// Package cmd implements common code for steg commands.
 package cmd
 
 import (
@@ -11,6 +12,13 @@ import (
 	"chrispennello.com/go/util/databox"
 )
 
+// State represents the state of your command.  Fill it in by parsing
+// arguments, input, etc., and then pass it to Main to execute the
+// command.  If there is no carrier (i.e., you're extracting), then set
+// it to nil; CarrierSize is not inspected in this case.  InputSize may
+// be set to -1 to indicate that the input is being streamed.  Note that
+// in this case, if Box is being used, then all of the input data will
+// be read into memory by the databox library.
 type State struct {
 	Ctx         *steg.Ctx
 	Carrier     io.Reader
@@ -74,6 +82,8 @@ func mux(dst io.Writer, s *State) error {
 	return nil
 }
 
+// Main is the entry point for common command logic.  Pass in a
+// destination writer and a pointer to a state struct you've prepared.
 func Main(dst io.Writer, s *State) error {
 	if s.Carrier == nil {
 		return extract(dst, s)
