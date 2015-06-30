@@ -76,14 +76,14 @@ func getFile(path string) (f *os.File, size int64) {
 	return f, fi.Size()
 }
 
-func getCarrier(path string) (carrier io.Reader, size int64) {
+func getCarrier(path string) (carrier io.ReadCloser, size int64) {
 	if path == "" {
 		return nil, -2
 	}
 	return getFile(path)
 }
 
-func getInput(path string) (input io.Reader, size int64) {
+func getInput(path string) (input io.ReadCloser, size int64) {
 	if path == "-" {
 		return os.Stdin, -1
 	}

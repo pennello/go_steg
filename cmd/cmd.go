@@ -20,9 +20,9 @@ import (
 // be read into memory by the databox library.
 type State struct {
 	Ctx         *steg.Ctx
-	Carrier     io.Reader
+	Carrier     io.ReadCloser
 	CarrierSize int64
-	Input       io.Reader
+	Input       io.ReadCloser
 	InputSize   int64
 	Box         bool
 	Offset      int64
@@ -57,7 +57,7 @@ func mux(dst io.Writer, s *State) error {
 	stream := s.InputSize == -1
 	inputSize := s.InputSize
 	carrierSize := s.CarrierSize
-	message := s.Input
+	message := io.Reader(s.Input)
 	if s.Box {
 		message = databox.NewMarshaller(s.Input, s.InputSize)
 		inputSize += databox.HeaderSize
@@ -84,9 +84,11 @@ func mux(dst io.Writer, s *State) error {
 // Main is the entry point for common command logic.  Pass in a
 // destination writer and a pointer to a state struct you've prepared.
 func Main(dst io.Writer, s *State) error {
+	defer s.Input.Close()
 	if s.Carrier == nil {
 		return extract(dst, s)
 	} else {
+               defer s.Carrier.Close()
 		return mux(dst, s)
 	}
 }
