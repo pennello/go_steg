@@ -87,8 +87,7 @@ func Main(dst io.Writer, s *State) error {
 	defer s.Input.Close()
 	if s.Carrier == nil {
 		return extract(dst, s)
-	} else {
-               defer s.Carrier.Close()
-		return mux(dst, s)
 	}
+	defer s.Carrier.Close()
+	return mux(dst, s)
 }
