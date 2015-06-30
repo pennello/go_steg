@@ -4,7 +4,6 @@
 package cmd
 
 import (
-	"errors"
 	"fmt"
 	"io"
 
@@ -35,7 +34,7 @@ func extract(dst io.Writer, s *State) error {
 	if s.Offset != 0 {
 		err = sr.Discard(s.Offset)
 		if err != nil {
-			return errors.New(fmt.Sprintf("extract error: %v", err))
+			return fmt.Errorf("extract error: %v", err)
 		}
 	}
 	r := io.Reader(sr)
@@ -49,7 +48,7 @@ func extract(dst io.Writer, s *State) error {
 		err = nil
 	}
 	if err != nil {
-		return errors.New(fmt.Sprintf("extract error: %v", err))
+		return fmt.Errorf("extract error: %v", err)
 	}
 	return nil
 }
@@ -67,17 +66,17 @@ func mux(dst io.Writer, s *State) error {
 	if s.Offset != 0 {
 		_, err := m.CopyN(s.Offset)
 		if err != nil {
-			return errors.New(fmt.Sprintf("mux error: %v", err))
+			return fmt.Errorf("mux error: %v", err)
 		}
 		carrierSize -= s.Offset
 	}
 	capacity := s.Ctx.Capacity(carrierSize)
 	if !stream && capacity < inputSize {
-		return errors.New(fmt.Sprintf("mux error: input size %v > capacity %v", inputSize, capacity))
+		return fmt.Errorf("mux error: input size %v > capacity %v", inputSize, capacity)
 	}
 	err := m.Mux()
 	if err != nil {
-		return errors.New(fmt.Sprintf("mux error: %v", err))
+		return fmt.Errorf("mux error: %v", err)
 	}
 	return nil
 }
