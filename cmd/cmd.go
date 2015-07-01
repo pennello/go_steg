@@ -84,6 +84,8 @@ func mux(dst io.Writer, s *State) error {
 
 // Main is the entry point for common command logic.  Pass in a
 // destination writer and a pointer to a state struct you've prepared.
+// Returns non-nil error on failure, although partial data could have
+// been read or written in this case.  nil error on success.
 func Main(dst io.Writer, s *State) error {
 	defer func() {
 		err := s.Input.Close()
