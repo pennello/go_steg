@@ -6,6 +6,7 @@ package cmd
 import (
 	"fmt"
 	"io"
+	"log"
 
 	"chrispennello.com/go/steg"
 	"chrispennello.com/go/util/databox"
@@ -84,10 +85,23 @@ func mux(dst io.Writer, s *State) error {
 // Main is the entry point for common command logic.  Pass in a
 // destination writer and a pointer to a state struct you've prepared.
 func Main(dst io.Writer, s *State) error {
-	defer s.Input.Close()
+	defer func() {
+		err := s.Input.Close()
+		if err != nil {
+			log.Print(err)
+		}
+	}()
+
 	if s.Carrier == nil {
 		return extract(dst, s)
 	}
-	defer s.Carrier.Close()
+
+	defer func() {
+		err := s.Carrier.Close()
+		if err != nil {
+			log.Print(err)
+		}
+	}()
+
 	return mux(dst, s)
 }
