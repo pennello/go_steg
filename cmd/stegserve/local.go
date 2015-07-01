@@ -21,7 +21,6 @@ func main() {
 		os.Exit(2)
 	}
 
-	http.HandleFunc("/mux", mux)
-	http.HandleFunc("/read", read)
+	http.HandleFunc("/", handle)
 	log.Fatal(http.ListenAndServe(*addr, nil))
 }

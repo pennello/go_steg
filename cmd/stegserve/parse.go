@@ -4,73 +4,26 @@ package main
 
 import (
 	"errors"
+	"fmt"
+	"io"
+	"log"
 	"strconv"
-	"strings"
 
 	"net/http"
 	"net/url"
+
+	"chrispennello.com/go/steg"
+	"chrispennello.com/go/steg/cmd"
 )
 
-type commonArgs struct {
-	atomSize int8
-	box      bool
-	offset   int64
-}
-
-type readArgs struct {
-	input *url.URL
-}
-
-type muxArgs struct {
-	carrier *url.URL
-	message *url.URL
-}
-
-func parseArgs(h http.Header) map[string]string {
-	r := make(map[string]string)
-	for k, v := range h {
-		if strings.HasPrefix(k, "X-Steg-") {
-			r[strings.ToLower(k[7:])] = v[0]
-		}
-	}
-	return r
-}
-
-func parseCommon(args map[string]string) (*commonArgs, error) {
-	atomSizeStr, ok := args["atom-size"]
+// get returns "" if the key is not present in the request header.
+func get(h http.Header, key string) string {
+	key = fmt.Sprintf("X-Steg-%s", key)
+	values, ok := h[key]
 	if !ok {
-		atomSizeStr = "1"
+		return ""
 	}
-	atomSize, err := strconv.ParseInt(atomSizeStr, 0, 8)
-	if err != nil {
-		return nil, errors.New("invalid atom size value")
-	}
-	if atomSize < 1 || atomSize > 3 {
-		return nil, errors.New("atom size must be 1, 2, or 3")
-	}
-
-	boxStr, ok := args["box"]
-	if !ok {
-		boxStr = "false"
-	}
-	box, err := strconv.ParseBool(boxStr)
-	if err != nil {
-		return nil, errors.New("invalid box value")
-	}
-
-	offsetStr, ok := args["offset"]
-	if !ok {
-		offsetStr = "0"
-	}
-	offset, err := strconv.ParseInt(offsetStr, 0, 64)
-	if err != nil {
-		return nil, errors.New("invalid offset value")
-	}
-	if offset < 0 {
-		return nil, errors.New("offset must be positive")
-	}
-
-	return &commonArgs{atomSize: int8(atomSize), box: box, offset: offset}, nil
+	return values[0]
 }
 
 func parseURL(rawurl string) (u *url.URL, err error) {
@@ -88,37 +41,105 @@ func parseURL(rawurl string) (u *url.URL, err error) {
 	return u, nil
 }
 
-func parseRead(args map[string]string) (*readArgs, error) {
-	inputStr, ok := args["input"]
-	if !ok {
-		return nil, errors.New("input required")
-	}
-	input, err := parseURL(inputStr)
+// Note that size can be -1 if the content length is unknown.
+func getURL(u *url.URL) (body io.ReadCloser, size int64, err error) {
+	resp, err := http.Get(u.String())
 	if err != nil {
-		return nil, err
+		return nil, -2, err
 	}
-
-	return &readArgs{input: input}, nil
+	return resp.Body, resp.ContentLength, nil
 }
 
-func parseMux(args map[string]string) (*muxArgs, error) {
-	carrierStr, ok := args["carrier"]
-	if !ok {
-		return nil, errors.New("carrier required")
+func getCarrier(u *url.URL) (carrier io.ReadCloser, size int64, err error) {
+	if u == nil {
+		return nil, -2, nil
 	}
-	carrier, err := parseURL(carrierStr)
+	return getURL(u)
+}
+
+func getInput(req *http.Request, u *url.URL) (input io.ReadCloser, size int64, err error) {
+	if u == nil {
+		return req.Body, req.ContentLength, nil
+	}
+	return getURL(u)
+}
+
+func parse(req *http.Request) (s *cmd.State, err error) {
+	h := req.Header
+
+	atomSizeStr := get(h, "Atom-Size")
+	if atomSizeStr == "" {
+		atomSizeStr = "1"
+	}
+	atomSize, err := strconv.ParseInt(atomSizeStr, 0, 8)
+	if err != nil {
+		return nil, errors.New("invalid atom size value")
+	}
+	if atomSize < 1 || atomSize > 3 {
+		return nil, errors.New("atom size must be 1, 2, or 3")
+	}
+
+	var carrier *url.URL
+	carrierStr := get(h, "Carrier")
+	if carrierStr == "" {
+		// No muxing.
+		carrier = nil
+	} else {
+		carrier, err = parseURL(carrierStr)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	var input *url.URL
+	inputStr := get(h, "Input")
+	if inputStr == "" {
+		// We'll just use the request body.
+		input = nil
+	} else {
+		input, err = parseURL(inputStr)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	boxStr := get(h, "Box")
+	if boxStr == "" {
+		boxStr = "false"
+	}
+	box, err := strconv.ParseBool(boxStr)
+	if err != nil {
+		return nil, errors.New("invalid box value")
+	}
+
+	offsetStr := get(h, "Offset")
+	if offsetStr == "" {
+		offsetStr = "0"
+	}
+	offset, err := strconv.ParseInt(offsetStr, 0, 64)
+	if err != nil {
+		return nil, errors.New("invalid offset value")
+	}
+	if offset < 0 {
+		return nil, errors.New("offset must be positive")
+	}
+
+	s = new(cmd.State)
+	s.Ctx = steg.NewCtx(uint8(atomSize))
+	s.Carrier, s.CarrierSize, err = getCarrier(carrier)
 	if err != nil {
 		return nil, err
 	}
-
-	messageStr, ok := args["message"]
-	if !ok {
-		return nil, errors.New("message required")
-	}
-	message, err := parseURL(messageStr)
+	s.Input, s.InputSize, err = getInput(req, input)
 	if err != nil {
+		err2 := s.Carrier.Close()
+		if err2 != nil {
+			log.Print(err2)
+		}
 		return nil, err
 	}
+	s.Box = box
+	s.Offset = offset
 
-	return &muxArgs{carrier: carrier, message: message}, nil
+	return s, nil
 }
