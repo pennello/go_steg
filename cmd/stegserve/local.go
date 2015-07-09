@@ -21,6 +21,8 @@ func main() {
 		os.Exit(2)
 	}
 
-	http.HandleFunc("/", handle)
+	http.HandleFunc("/", index)
+	http.HandleFunc("/api", api)
+	http.HandleFunc("/form", form)
 	log.Fatal(http.ListenAndServe(*addr, nil))
 }

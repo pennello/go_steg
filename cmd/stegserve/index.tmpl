@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang='en'>
+<head>
+  <title>Steganographic Embedding Demo</title>
+</head>
+<body>
+  <form action='/form' method='post' enctype='multipart/form-data'>
+    <p>
+      <label>
+        <select type='option' name='atom-size'>
+          <option value='1'>1</option>
+          <option value='2'>2</option>
+          <option value='3'>3</option>
+        </select>
+        Atom size
+      </label>
+    </p>
+    <p>
+      <label>
+        <input type='checkbox' name='box'>
+        Use size-checking encapsulation format
+      </label>
+    </p>
+    <p>
+      Message carrier:
+      <ul>
+        <li>
+          <label>
+            URL <input type='text' name='carrier' size='100'>
+          </label>
+        </li>
+        or
+        <li>
+          <input type='file' name='carrier'>
+        </li>
+      </ul>
+    </p>
+    <p>
+      Input:
+      <ul>
+        <li>
+          <label>
+            URL <input type='text' name='input' size='100'>
+          </label>
+        </li>
+        or
+        <li>
+          <input type='file' name='input'>
+        </li>
+      </ul>
+    </p>
+    <p>
+      <label>
+        Read/write offset <input type='text' name='offset' size='6' value='0'>
+      </label>
+    </p>
+    <button type='submit'>Go</button>
+  </form>
+</body>
+</html>

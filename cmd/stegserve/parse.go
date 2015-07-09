@@ -1,4 +1,4 @@
-// chris 0622315 HTTP header argument parsing.
+// chris 0622315 API parameter parsing.
 
 package main
 
@@ -7,8 +7,11 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"mime"
 	"strconv"
 
+	"io/ioutil"
+	"mime/multipart"
 	"net/http"
 	"net/url"
 
@@ -16,10 +19,10 @@ import (
 	"chrispennello.com/go/steg/cmd"
 )
 
-// get returns "" if the key is not present in the request header.
-func get(h http.Header, key string) string {
+// getHeader returns "" if the key is not present in the request header.
+func getHeader(req *http.Request, key string) string {
 	key = fmt.Sprintf("X-Steg-%s", key)
-	values, ok := h[key]
+	values, ok := req.Header[key]
 	if !ok {
 		return ""
 	}
@@ -64,23 +67,48 @@ func getInput(req *http.Request, u *url.URL) (input io.ReadCloser, size int64, e
 	return getURL(u)
 }
 
-func parse(req *http.Request) (s *cmd.State, err error) {
-	h := req.Header
+func parseAtomSize(atomSizeStr string) (uint8, error) {
+	atomSize, err := strconv.ParseInt(atomSizeStr, 0, 8)
+	if err != nil {
+		return 0, errors.New("invalid atom size value")
+	}
+	if atomSize < 1 || atomSize > 3 {
+		return 0, errors.New("atom size must be 1, 2, or 3")
+	}
+	return uint8(atomSize), nil
+}
 
-	atomSizeStr := get(h, "Atom-Size")
+func parseBox(boxStr string) (bool, error) {
+	box, err := strconv.ParseBool(boxStr)
+	if err != nil {
+		return false, errors.New("invalid box value")
+	}
+	return box, nil
+}
+
+func parseOffset(offsetStr string) (int64, error) {
+	offset, err := strconv.ParseInt(offsetStr, 0, 64)
+	if err != nil {
+		return -2, errors.New("invalid offset value")
+	}
+	if offset < 0 {
+		return -2, errors.New("offset must be positive")
+	}
+	return offset, nil
+}
+
+func parseApi(req *http.Request) (s *cmd.State, err error) {
+	atomSizeStr := getHeader(req, "Atom-Size")
 	if atomSizeStr == "" {
 		atomSizeStr = "1"
 	}
-	atomSize, err := strconv.ParseInt(atomSizeStr, 0, 8)
+	atomSize, err := parseAtomSize(atomSizeStr)
 	if err != nil {
-		return nil, errors.New("invalid atom size value")
-	}
-	if atomSize < 1 || atomSize > 3 {
-		return nil, errors.New("atom size must be 1, 2, or 3")
+		return nil, err
 	}
 
 	var carrier *url.URL
-	carrierStr := get(h, "Carrier")
+	carrierStr := getHeader(req, "Carrier")
 	if carrierStr == "" {
 		// No muxing.
 		carrier = nil
@@ -92,7 +120,7 @@ func parse(req *http.Request) (s *cmd.State, err error) {
 	}
 
 	var input *url.URL
-	inputStr := get(h, "Input")
+	inputStr := getHeader(req, "Input")
 	if inputStr == "" {
 		// We'll just use the request body.
 		input = nil
@@ -103,29 +131,26 @@ func parse(req *http.Request) (s *cmd.State, err error) {
 		}
 	}
 
-	boxStr := get(h, "Box")
+	boxStr := getHeader(req, "Box")
 	if boxStr == "" {
 		boxStr = "false"
 	}
-	box, err := strconv.ParseBool(boxStr)
+	box, err := parseBox(boxStr)
 	if err != nil {
-		return nil, errors.New("invalid box value")
+		return nil, err
 	}
 
-	offsetStr := get(h, "Offset")
+	offsetStr := getHeader(req, "Offset")
 	if offsetStr == "" {
 		offsetStr = "0"
 	}
-	offset, err := strconv.ParseInt(offsetStr, 0, 64)
+	offset, err := parseOffset(offsetStr)
 	if err != nil {
-		return nil, errors.New("invalid offset value")
-	}
-	if offset < 0 {
-		return nil, errors.New("offset must be positive")
+		return nil, err
 	}
 
 	s = new(cmd.State)
-	s.Ctx = steg.NewCtx(uint8(atomSize))
+	s.Ctx = steg.NewCtx(atomSize)
 	s.Carrier, s.CarrierSize, err = getCarrier(carrier)
 	if err != nil {
 		return nil, err
@@ -140,6 +165,178 @@ func parse(req *http.Request) (s *cmd.State, err error) {
 	}
 	s.Box = box
 	s.Offset = offset
+
+	return s, nil
+}
+
+func parsePart(part *multipart.Part) (u *url.URL, rc io.ReadCloser, err error) {
+	filename := part.FileName()
+	if filename != "" {
+		// We assume entire file.
+		return nil, part, nil
+	} else {
+		// We assume URL.
+		inputBytes, err := ioutil.ReadAll(part)
+		if err != nil {
+			return nil, nil, err
+		}
+		rawurl := string(inputBytes)
+		if rawurl == "" {
+			// Form may have just been
+			// submited with no URL, but
+			// with file input in another
+			// field of the same name.
+			// We'll check for missing
+			// values after we go through
+			// all the parts.
+			return nil, nil, nil
+		}
+		u, err = parseURL(rawurl)
+		if err != nil {
+			return nil, nil, err
+		}
+		return u, nil, nil
+	}
+}
+
+func parseForm(req *http.Request) (s *cmd.State, err error) {
+	contenttype, ok := req.Header["Content-Type"]
+	if !ok {
+		return nil, errors.New("content-type required")
+	}
+	mediatype, params, err := mime.ParseMediaType(contenttype[0])
+	if err != nil {
+		return nil, err
+	}
+	if mediatype != "multipart/form-data" {
+		return nil, errors.New("multipart/form-data required")
+	}
+	boundary, ok := params["boundary"]
+	if !ok {
+		return nil, errors.New("form boundary required")
+	}
+
+	// XXX This can behave poorly if the input is weird.  For
+	// example, if the input provides two parts with carrier files,
+	// one will be orphaned and never closed.
+
+	mpr := multipart.NewReader(req.Body, boundary)
+	s = new(cmd.State)
+
+	var atomSize uint8
+	var carrier *url.URL
+	var carrierReader io.ReadCloser
+	var input *url.URL
+	var inputReader io.ReadCloser
+
+	for {
+		part, err := mpr.NextPart()
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			return nil, err
+		}
+
+		switch part.FormName() {
+
+		// This includes the empty string, returned when there
+		// is no form name present.
+		default:
+			continue
+
+		case "atom-size":
+			{
+				atomSizeBytes, err := ioutil.ReadAll(part)
+				if err != nil {
+					return nil, err
+				}
+				// No default handling--form should provide the
+				// default of 1.
+				atomSize, err = parseAtomSize(string(atomSizeBytes))
+				if err != nil {
+					return nil, err
+				}
+			}
+
+		case "carrier":
+			{
+				carrier, carrierReader, err = parsePart(part)
+				if err != nil {
+					return nil, err
+				}
+			}
+
+		case "input":
+			{
+				input, inputReader, err = parsePart(part)
+				if err != nil {
+					return nil, err
+				}
+			}
+
+		case "box":
+			{
+				boxBytes, err := ioutil.ReadAll(part)
+				if err != nil {
+					return nil, err
+				}
+				boxStr := string(boxBytes)
+				if boxStr == "on" {
+					boxStr = "1"
+				}
+				box, err := parseBox(boxStr)
+				if err != nil {
+					return nil, err
+				}
+				s.Box = box
+			}
+
+		case "offset":
+			{
+				offsetBytes, err := ioutil.ReadAll(part)
+				if err != nil {
+					return nil, err
+				}
+				offset, err := parseOffset(string(offsetBytes))
+				if err != nil {
+					return nil, err
+				}
+				s.Offset = offset
+			}
+		}
+	}
+
+	if atomSize == 0 {
+		return nil, errors.New("atom-size required")
+	}
+	s.Ctx = steg.NewCtx(atomSize)
+
+	if carrierReader != nil {
+		s.Carrier, s.CarrierSize = carrierReader, -1
+	} else if carrier != nil {
+		s.Carrier, s.CarrierSize, err = getURL(carrier)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		return nil, errors.New("carrier required")
+	}
+
+	if inputReader != nil {
+		s.Input, s.InputSize = inputReader, -1
+	} else if input != nil {
+		s.Input, s.InputSize, err = getURL(input)
+		if err != nil {
+			err2 := s.Carrier.Close()
+			if err2 != nil {
+				log.Print(err2)
+			}
+			return nil, err
+		}
+	} else {
+		return nil, errors.New("inpput required")
+	}
 
 	return s, nil
 }
