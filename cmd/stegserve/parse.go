@@ -170,11 +170,11 @@ func parseApi(req *http.Request) (s *cmd.State, err error) {
 	return s, nil
 }
 
-type BytesBufferCloser struct {
+type bytesBufferCloser struct {
 	*bytes.Buffer
 }
 
-func (BytesBufferCloser) Close() error {
+func (bytesBufferCloser) Close() error {
 	return nil
 }
 
@@ -192,30 +192,29 @@ func parsePart(part *multipart.Part) (u *url.URL, rc io.ReadCloser, err error) {
 		if err != nil {
 			return nil, nil, err
 		}
-		return nil, BytesBufferCloser{buf}, nil
-	} else {
-		// We assume URL.
-		inputBytes, err := ioutil.ReadAll(part)
-		if err != nil {
-			return nil, nil, err
-		}
-		rawurl := string(inputBytes)
-		if rawurl == "" {
-			// Form may have just been
-			// submited with no URL, but
-			// with file input in another
-			// field of the same name.
-			// We'll check for missing
-			// values after we go through
-			// all the parts.
-			return nil, nil, nil
-		}
-		u, err = parseURL(rawurl)
-		if err != nil {
-			return nil, nil, err
-		}
-		return u, nil, nil
+		return nil, bytesBufferCloser{buf}, nil
 	}
+	// We assume URL.
+	inputBytes, err := ioutil.ReadAll(part)
+	if err != nil {
+		return nil, nil, err
+	}
+	rawurl := string(inputBytes)
+	if rawurl == "" {
+		// Form may have just been
+		// submited with no URL, but
+		// with file input in another
+		// field of the same name.
+		// We'll check for missing
+		// values after we go through
+		// all the parts.
+		return nil, nil, nil
+	}
+	u, err = parseURL(rawurl)
+	if err != nil {
+		return nil, nil, err
+	}
+	return u, nil, nil
 }
 
 func parseForm(req *http.Request) (s *cmd.State, err error) {
