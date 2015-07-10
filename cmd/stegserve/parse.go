@@ -354,7 +354,7 @@ func parseForm(req *http.Request) (s *cmd.State, err error) {
 			return nil, err
 		}
 	} else {
-		return nil, errors.New("inpput required")
+		return nil, errors.New("input required")
 	}
 
 	return s, nil
