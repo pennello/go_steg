@@ -3,6 +3,7 @@
 package main
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"io"
@@ -169,11 +170,29 @@ func parseApi(req *http.Request) (s *cmd.State, err error) {
 	return s, nil
 }
 
+type BytesBufferCloser struct {
+	*bytes.Buffer
+}
+
+func (BytesBufferCloser) Close() error {
+	return nil
+}
+
+// parsePart parses a multipart mime part for an input or carrier form
+// entry.  File uploads will be buffered entirely into memory.
 func parsePart(part *multipart.Part) (u *url.URL, rc io.ReadCloser, err error) {
 	filename := part.FileName()
 	if filename != "" {
 		// We assume entire file.
-		return nil, part, nil
+		// Parts are being read from multipart mime, so we
+		// buffer the entire thing into memory. :[
+
+		buf := new(bytes.Buffer)
+		_, err := buf.ReadFrom(part)
+		if err != nil {
+			return nil, nil, err
+		}
+		return nil, BytesBufferCloser{buf}, nil
 	} else {
 		// We assume URL.
 		inputBytes, err := ioutil.ReadAll(part)
