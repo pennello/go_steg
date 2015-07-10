@@ -4,6 +4,52 @@
   <title>Steganographic Embedding Demo</title>
 </head>
 <body>
+  <!--
+    NB: This documentation is very similar to the GoDoc documentation
+    for the steg command.
+  -->
+  <h1>Steganographic Embedding Demo</h1>
+  <p>
+    This is a simple web GUI for the steganographic embedding
+    package <code>steg</code>.
+  </p>
+  <p>
+    The atom size may be specified as 1, 2, or 3.  The default is 1.
+  </p>
+  <p>
+    Input can be provided either as a URL or as a file upload.  If
+    provided as a file upload, the entire file will be buffered into
+    memory on the server side.
+  </p>
+  <p>
+    A carrier can be provided either as a URL or as a file upload.  If
+    provided as a file upload, the entire file will be buffered into
+    memory on the server side.  If provided, then the input will be
+    interpreted as a message to embed within the carrier.  The modified
+    output will be returned as the response data.  Steg refers to this
+    as "muxing".
+  </p>
+  <p>
+    Sans carrier, the input will be interpreted as a source from which to
+    extract steganographically-embedded data.  The extracted data will be
+    returned as the response data.
+  </p>
+  <p>
+    An offset may be specified on both read and write.  The idea is to
+    avoid overwriting sensitive headers in the carrier data.  Note that
+    specifying an offset effectivly reduces the size of the carrier
+    available to embed your message.
+  </p>
+  <p>
+    Frequently, the data to be embedded will be less than the capacity
+    provided by the carrier.  In this case, on extraction, you'll want
+    some way to know not to read more than was embedded.  A mechanism for
+    this is provided with the box flag.  This will enable the use of a
+    simple size-checking encapsulation format.  If you use it on write,
+    you'll want to use it on read as well.  Note that using the box flag
+    effectively increases the size of your input data.
+  </p>
+  <hr>
   <form action='/form' method='post' enctype='multipart/form-data'>
     <p>
       <label>

@@ -1,5 +1,8 @@
 // chris 052815
 
+// NB: This command documentation is very similar to the in-page web GUI
+// documentation in stegserve.
+
 // Steg is a command-line interface to the steganographic embedding
 // package steg of which it is a part.
 //
