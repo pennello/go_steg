@@ -1,7 +1,3 @@
-Web Tool TODO
--------------
-- App engine version.
-
 TODO
 ----
 - web tool
