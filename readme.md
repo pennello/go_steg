@@ -1,6 +1,5 @@
 Web Tool TODO
 -------------
-- Document command.
 - App engine version.
 
 TODO
