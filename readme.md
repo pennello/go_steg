@@ -1,6 +1,5 @@
 Web Tool TODO
 -------------
-- Need template for UI?
 - Document command.
 - App engine version.
 

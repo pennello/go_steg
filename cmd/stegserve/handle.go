@@ -6,7 +6,6 @@ import (
 	"io"
 	"log"
 
-	"html/template"
 	"net/http"
 
 	"chrispennello.com/go/steg/cmd"
@@ -47,14 +46,5 @@ func form(w http.ResponseWriter, req *http.Request) {
 }
 
 func index(w http.ResponseWriter, req *http.Request) {
-	tmpl, err := template.ParseFiles("index.tmpl")
-	if err != nil {
-		errorResponse(w, 500, err)
-		return
-	}
-	err = tmpl.Execute(w, nil)
-	if err != nil {
-		errorResponse(w, 500, err)
-		return
-	}
+	http.ServeFile(w, req, "static/html/index.html")
 }
