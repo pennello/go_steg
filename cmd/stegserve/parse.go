@@ -339,7 +339,7 @@ func parseForm(req *http.Request) (s *cmd.State, err error) {
 			return nil, err
 		}
 	} else {
-		return nil, errors.New("carrier required")
+		// No carrier, no problem--we just won't do any muxing.
 	}
 
 	if inputReader != nil {
