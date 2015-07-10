@@ -1,4 +1,4 @@
-// chris 061715 Command to run the server.
+// chris 061715
 
 // +build !appengine
 
@@ -67,8 +67,7 @@ func main() {
 		os.Exit(2)
 	}
 
-	http.HandleFunc("/", index)
-	http.HandleFunc("/api", api)
-	http.HandleFunc("/form", form)
+	// HTTP handler functions initialized in hande.go.
+
 	log.Fatal(http.ListenAndServe(*addr, nil))
 }
