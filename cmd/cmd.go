@@ -15,10 +15,12 @@ import (
 // State represents the state of your command.  Fill it in by parsing
 // arguments, input, etc., and then pass it to Main to execute the
 // command.  If there is no carrier (i.e., you're extracting), then set
-// it to nil; CarrierSize is not inspected in this case.  InputSize may
-// be set to -1 to indicate that the input is being streamed.  Note that
-// in this case, if Box is being used, then all of the input data will
-// be read into memory by the databox library.
+// it to nil; CarrierSize is not inspected in this case.
+//
+// InputSize or CarrierSize may be set to -1 to indicate that the input
+// or carrier is being streamed.  In the case of the input data being
+// streamed, if Box is being used, then all of the input data will be
+// read into memory by the databox library.
 type State struct {
 	Ctx         *steg.Ctx
 	Carrier     io.ReadCloser
@@ -55,9 +57,10 @@ func extract(dst io.Writer, s *State) error {
 }
 
 func mux(dst io.Writer, s *State) error {
-	stream := s.InputSize == -1
-	inputSize := s.InputSize
+	carrierStream := s.CarrierSize == -1
+	inputStream := s.InputSize == -1
 	carrierSize := s.CarrierSize
+	inputSize := s.InputSize
 	message := io.Reader(s.Input)
 	if s.Box {
 		message = databox.NewMarshaller(s.Input, s.InputSize)
@@ -71,9 +74,11 @@ func mux(dst io.Writer, s *State) error {
 		}
 		carrierSize -= s.Offset
 	}
-	capacity := s.Ctx.Capacity(carrierSize)
-	if !stream && capacity < inputSize {
-		return fmt.Errorf("mux error: input size %v > capacity %v", inputSize, capacity)
+	if !inputStream && !carrierStream {
+		capacity := s.Ctx.Capacity(carrierSize)
+		if capacity < inputSize {
+			return fmt.Errorf("mux error: input size %v > capacity %v", inputSize, capacity)
+		}
 	}
 	err := m.Mux()
 	if err != nil {
