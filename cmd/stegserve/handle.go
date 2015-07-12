@@ -14,9 +14,9 @@ import (
 // HTTP handler function initialization common to both local servers as
 // well as App Engine.
 func init() {
-	http.HandleFunc("/", index)
-	http.HandleFunc("/api", api)
-	http.HandleFunc("/form", form)
+	http.HandleFunc("/", indexHandler)
+	http.HandleFunc("/api", apiHandler)
+	http.HandleFunc("/mime", mimeHandler)
 }
 
 func errorResponse(w http.ResponseWriter, status int, err error) {
@@ -27,7 +27,7 @@ func errorResponse(w http.ResponseWriter, status int, err error) {
 	}
 }
 
-func api(w http.ResponseWriter, req *http.Request) {
+func apiHandler(w http.ResponseWriter, req *http.Request) {
 	s, err := parseApi(req)
 	if err != nil {
 		errorResponse(w, 400, err)
@@ -40,7 +40,7 @@ func api(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func form(w http.ResponseWriter, req *http.Request) {
+func mimeHandler(w http.ResponseWriter, req *http.Request) {
 	s, err := parseForm(req)
 	if err != nil {
 		errorResponse(w, 400, err)
@@ -53,6 +53,6 @@ func form(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func index(w http.ResponseWriter, req *http.Request) {
+func indexHandler(w http.ResponseWriter, req *http.Request) {
 	http.ServeFile(w, req, "static/html/index.html")
 }

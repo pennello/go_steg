@@ -8,7 +8,7 @@
 //
 //	/	Simple web GUI.
 //	/api	Header-based API.
-//	/form	Multipart MIME-based API, used by the web GUI.
+//	/mime	Multipart MIME-based API, used by the web GUI.
 //		Buffers file uploads into memory.
 //
 // /api takes the following header arguments.  See the GoDoc
@@ -24,7 +24,7 @@
 //				valid URL
 //	X-Steg-Offset		defaults to 0; read/write offset
 //
-// /form takes the following form field arguments.  See the GoDoc
+// /mime takes the following form-data arguments.  See the GoDoc
 // documentation of the steg command for a fuller explanation of these
 // arguments.
 //
