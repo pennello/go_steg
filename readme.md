@@ -2,9 +2,12 @@ A simple steganographic algorithm, exposed in library routines, a
 command-line interface, as well as a web proxy demonstration
 implementation.
 
-# [GoDoc Documentation](https://godoc.org/chrispennello.com/go/steg)
+Documentation
+-------------
+ - [GoDoc Documentation](https://godoc.org/chrispennello.com/go/steg)
 
-# Installation
+Installation
+------------
     go get chrispennello.com/go/steg
 
 The command-line interface:
@@ -17,7 +20,8 @@ The web proxy demo:
 
 `stegserve` can also be run as an App Engine application.
 
-# I/O Throughput
+I/O Throughput
+--------------
     % sysctl hw.model hw.machine hw.ncpu
     hw.model: AMD Phenom(tm) II X4 955 Processor
     hw.machine: amd64
